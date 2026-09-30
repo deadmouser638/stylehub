@@ -308,7 +308,7 @@ const Checkout = () => {
                   const active = paymentMethod === value;
                   const unavailable = value === 'Card' && !payConfig.card.enabled;
                   return (
-                    <button key={value} role="radio" aria-checked={active} disabled={unavailable} onClick={() => setPaymentMethod(value)} className={`card flex w-full items-center gap-4 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-55 sm:p-5 ${active ? 'border-fg ring-2 ring-fg' : 'hover:border-line-strong'}`}>
+                    <button type="button" key={value} role="radio" aria-checked={active} disabled={unavailable} onClick={() => setPaymentMethod(value)} className={`card flex w-full items-center gap-4 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-55 sm:p-5 ${active ? 'border-fg ring-2 ring-fg' : 'hover:border-line-strong'}`}>
                       <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${active ? 'bg-ink text-on-ink' : 'bg-surface-2'}`}><Icon size={22} /></span>
                       <span className="flex-1">
                         <span className="block font-extrabold">{label}</span>
@@ -320,8 +320,8 @@ const Checkout = () => {
                 })}
               </div>
               <p className="mt-4 flex items-start gap-2 text-xs text-muted"><ShieldCheck size={15} className="shrink-0 text-success" /> {paymentMethod === 'UPI' ? "After placing the order you'll get a UPI QR code for the exact amount." : paymentMethod === 'Card' ? 'Card payments are processed securely by Razorpay. We never see your card details.' : 'Pay in cash or by UPI to the delivery partner.'}</p>
-              <button onClick={handlePlaceOrder} disabled={placing} className="btn-primary mt-8 w-full py-4 text-base sm:w-auto sm:px-12">
-                {placing ? 'Placing order…' : paymentMethod === 'COD' ? `Place order · ₹${summary.total.toLocaleString('en-IN')}` : `Pay ₹${summary.total.toLocaleString('en-IN')}`}
+              <button type="button" onClick={handlePlaceOrder} disabled={placing} className="btn-primary mt-8 w-full py-4 text-base sm:w-auto sm:px-12">
+                {placing ? 'Placing order…' : paymentMethod === 'COD' ? `Confirm Cash on Delivery Order` : `Pay ₹${summary.total.toLocaleString('en-IN')}`}
               </button>
             </section>
           )}
