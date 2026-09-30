@@ -32,7 +32,7 @@ const ProductCard = ({ product, className = '' }) => {
   };
 
   return (
-    <article className={`group relative flex flex-col ${className}`}>
+    <article className={`group relative flex flex-col hover-lift transition-all duration-300 ${className}`}>
       <div className="relative overflow-hidden rounded-2xl bg-surface-2">
         <Link to={`/product/${product.id}`} className="block aspect-[3/4]" aria-label={`${product.brand} ${title}`}>
           {!imgLoaded && <div className="skeleton absolute inset-0" aria-hidden="true" />}

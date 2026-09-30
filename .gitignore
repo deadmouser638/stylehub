@@ -127,3 +127,5 @@ $RECYCLE.BIN/
 *.sln
 *.sw?
 .claude/
+
+.vercel
