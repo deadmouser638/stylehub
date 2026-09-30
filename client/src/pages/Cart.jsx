@@ -213,7 +213,7 @@ const Cart = () => {
               </p>
             )}
             <button onClick={() => navigate('/checkout')} className="btn-primary mt-5 w-full py-4 text-base">
-              Place order <ArrowRight size={18} />
+              Proceed to checkout <ArrowRight size={18} />
             </button>
             <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted"><ShieldCheck size={14} /> Safe & secure checkout</p>
           </div>

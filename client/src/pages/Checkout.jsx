@@ -28,15 +28,28 @@ const PAYMENT_METHODS = [
 ];
 
 const Checkout = () => {
-  const [step, setStep] = useState(1); // 1 = address, 2 = payment, 3 = confirmed
+  const [placed, setPlaced] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('last_placed_order');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [paymentState, setPaymentState] = useState(() => {
+    try {
+      return sessionStorage.getItem('last_payment_state') || null;
+    } catch {
+      return null;
+    }
+  });
+  const [step, setStep] = useState(() => (placed ? 3 : 1)); // 1 = address, 2 = payment, 3 = confirmed
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(true);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [placing, setPlacing] = useState(false);
-  const [placed, setPlaced] = useState(null); // { orderId, amount, paymentMethod, upi }
-  const [paymentState, setPaymentState] = useState(null); // 'awaiting' | 'verifying' | 'paid' | 'cod' | 'failed'
   const [payConfig, setPayConfig] = useState({ upi: { enabled: true }, card: { enabled: false }, cod: { enabled: true } });
 
   const { cart, cartLoading, fetchCart, appliedCoupon, setAppliedCoupon } = useContext(CartContext);
@@ -101,18 +114,27 @@ const Checkout = () => {
   }, [cart.length, cartLoading, navigate, placed, step]);
 
   const handlePlaceOrder = async () => {
-    if (!selectedAddress) return toast.error('Please select an address');
+    if (!selectedAddress && addresses.length > 0) {
+      setSelectedAddress(addresses[0].id);
+    }
+    const targetAddressId = selectedAddress || (addresses[0]?.id ?? null);
+
     setPlacing(true);
     try {
       const res = await api.post('/orders', {
-        address_id: selectedAddress,
+        address_id: targetAddressId,
         payment_method: paymentMethod,
         coupon_code: appliedCoupon?.code,
       });
       const order = res.data.data;
+      const initialPState = order.paymentMethod === 'COD' ? 'cod' : 'awaiting';
       setPlaced(order);
-      setPaymentState(order.paymentMethod === 'COD' ? 'cod' : 'awaiting');
+      setPaymentState(initialPState);
       setStep(3);
+      try {
+        sessionStorage.setItem('last_placed_order', JSON.stringify(order));
+        sessionStorage.setItem('last_payment_state', initialPState);
+      } catch {}
       if (order.paymentMethod === 'Card') payByCard(order);
       setAppliedCoupon(null);
       fetchCart();
@@ -124,11 +146,18 @@ const Checkout = () => {
     }
   };
 
+  const handleUpiSubmitted = () => {
+    setPaymentState('verifying');
+    try {
+      sessionStorage.setItem('last_payment_state', 'verifying');
+    } catch {}
+  };
+
   const summary = getCartSummary(cart, appliedCoupon);
 
   if (cartLoading || addressesLoading) return <Spinner />;
 
-  if (step === 3 && placed) {
+  if ((step === 3 || placed) && placed) {
     const eta = addDays(new Date(), 5).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
     if (placed.paymentMethod === 'UPI' && paymentState === 'awaiting') {
@@ -138,7 +167,7 @@ const Checkout = () => {
             <p className="eyebrow">Order #{placed.orderId} placed</p>
             <h1 className="mt-2 font-display text-3xl font-semibold">Complete your UPI payment</h1>
             <p className="mb-6 mt-1 text-sm text-muted">Pay {formatPrice(placed.amount)} to confirm your order. You can also pay later from My Orders.</p>
-            <UpiPayment payment={placed.upi} onSubmitted={() => setPaymentState('verifying')} />
+            <UpiPayment payment={placed.upi} onSubmitted={handleUpiSubmitted} />
           </div>
         </div>
       );
