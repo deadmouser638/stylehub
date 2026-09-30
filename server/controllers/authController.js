@@ -3,8 +3,10 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { successResponse, errorResponse } = require('../utils/response');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'stylehub_super_secret_jwt_key_2026';
+
 const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+  return jwt.sign({ id }, JWT_SECRET, {
     expiresIn: '30d',
   });
 };

@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const { errorResponse } = require('../utils/response');
 const db = require('../db');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'stylehub_super_secret_jwt_key_2026';
+
 exports.protect = (req, res, next) => {
   let token;
 
@@ -14,7 +16,7 @@ exports.protect = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const user = db.prepare('SELECT id, name, email, phone, gender, role, created_at FROM users WHERE id = ?').get(decoded.id);
 
     if (!user) {
