@@ -62,8 +62,19 @@ try {
     db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Demo User', 'demo@electrohub.com', demoHash, 'customer');
     db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Store Admin', 'admin@electrohub.com', adminHash, 'admin');
   }
+
+  const demoUser = db.prepare("SELECT id FROM users WHERE email = 'demo@electrohub.com'").get();
+  if (demoUser) {
+    const addrCount = db.prepare('SELECT COUNT(*) as count FROM addresses WHERE user_id = ?').get(demoUser.id)?.count || 0;
+    if (addrCount === 0) {
+      db.prepare(`
+        INSERT INTO addresses (user_id, name, phone, pincode, address_line, city, state, type, is_default)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `).run(demoUser.id, 'Demo User', '9876543210', '400001', 'Flat 402, Sunshine Towers, Marine Drive', 'Mumbai', 'Maharashtra', 'Home');
+    }
+  }
 } catch (err) {
-  console.error('Error auto-seeding users:', err);
+  console.error('Error auto-seeding users and addresses:', err);
 }
 
 console.log('Database initialized successfully.');

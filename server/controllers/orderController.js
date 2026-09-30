@@ -28,8 +28,14 @@ exports.createOrder = async (req, res) => {
   }
 
   try {
-    const address = db.prepare('SELECT * FROM addresses WHERE id = ? AND user_id = ?').get(address_id, user_id);
-    if (!address) return errorResponse(res, 404, 'Address not found');
+    let address = null;
+    if (address_id) {
+      address = db.prepare('SELECT * FROM addresses WHERE id = ? AND user_id = ?').get(address_id, user_id);
+    }
+    if (!address) {
+      address = db.prepare('SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC LIMIT 1').get(user_id);
+    }
+    if (!address) return errorResponse(res, 400, 'Please add a delivery address before placing your order');
 
     const cartItems = db.prepare(`
       SELECT c.*, p.name, p.price, p.discount_percent, p.stock, p.images, p.is_active

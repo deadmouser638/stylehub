@@ -378,8 +378,13 @@ const seedDatabase = async () => {
     `);
 
     const insertUser = db.prepare('INSERT INTO users (name, email, password_hash, phone, gender, role) VALUES (?, ?, ?, ?, ?, ?)');
-    insertUser.run('Demo User', 'demo@electrohub.com', await bcrypt.hash('Demo@123', 10), '9876543210', null, 'customer');
+    const demoUserId = insertUser.run('Demo User', 'demo@electrohub.com', await bcrypt.hash('Demo@123', 10), '9876543210', null, 'customer').lastInsertRowid;
     insertUser.run('Store Admin', 'admin@electrohub.com', await bcrypt.hash('Admin@123', 10), null, null, 'admin');
+    
+    db.prepare(`
+      INSERT INTO addresses (user_id, name, phone, pincode, address_line, city, state, type, is_default)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `).run(demoUserId, 'Demo User', '9876543210', '400001', 'Flat 402, Sunshine Towers, Marine Drive', 'Mumbai', 'Maharashtra', 'Home');
     const reviewerHash = await bcrypt.hash(`${Date.now()}-${Math.random()}`, 4);
     const reviewerIds = REVIEWERS.map((name, i) => insertUser.run(name, `reviewer${i + 1}@example.com`, reviewerHash, null, null, 'customer').lastInsertRowid);
 
