@@ -14,8 +14,8 @@
 // ============================================================================
 
 module.exports = {
-  UPI_ID: process.env.UPI_ID || 'yourname@upi',        // <-- CHANGE THIS to your UPI ID
-  UPI_PAYEE_NAME: process.env.UPI_PAYEE_NAME || 'StyleHub', // <-- name shown in the UPI app
+  UPI_ID: process.env.UPI_ID || 'agrawalshubh638@okicici',        // <-- CHANGE THIS to your UPI ID
+  UPI_PAYEE_NAME: process.env.UPI_PAYEE_NAME || 'Shubh Agrawal', // <-- name shown in the UPI app
 
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '',

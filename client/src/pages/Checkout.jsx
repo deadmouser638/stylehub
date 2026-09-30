@@ -153,6 +153,17 @@ const Checkout = () => {
     } catch {}
   };
 
+  const handleCancelUpiAndGoBack = () => {
+    try {
+      sessionStorage.removeItem('last_placed_order');
+      sessionStorage.removeItem('last_payment_state');
+    } catch {}
+    setPlaced(null);
+    setPaymentState(null);
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const summary = getCartSummary(cart, appliedCoupon);
 
   if (cartLoading || addressesLoading) return <Spinner />;
@@ -164,10 +175,26 @@ const Checkout = () => {
       return (
         <div className="container-x py-8 md:py-12">
           <div className="card mx-auto max-w-3xl p-5 animate-slide-up sm:p-8">
-            <p className="eyebrow">Order #{placed.orderId} placed</p>
-            <h1 className="mt-2 font-display text-3xl font-semibold">Complete your UPI payment</h1>
-            <p className="mb-6 mt-1 text-sm text-muted">Pay {formatPrice(placed.amount)} to confirm your order. You can also pay later from My Orders.</p>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="eyebrow">Order #{placed.orderId} reserved</p>
+              <button
+                onClick={handleCancelUpiAndGoBack}
+                className="btn-ghost flex items-center gap-1.5 text-xs font-bold text-muted hover:text-fg"
+              >
+                ← Choose another payment method
+              </button>
+            </div>
+            <h1 className="mt-1 font-display text-3xl font-semibold">Complete your UPI payment</h1>
+            <p className="mb-6 mt-1 text-sm text-muted">Pay {formatPrice(placed.amount)} to confirm your order, or switch to Cash on Delivery / Card.</p>
             <UpiPayment payment={placed.upi} onSubmitted={handleUpiSubmitted} />
+            <div className="mt-6 border-t border-line pt-4 text-center">
+              <button
+                onClick={handleCancelUpiAndGoBack}
+                className="btn-outline text-xs font-extrabold"
+              >
+                Change Payment Method (Pay via Cash on Delivery or Card)
+              </button>
+            </div>
           </div>
         </div>
       );
