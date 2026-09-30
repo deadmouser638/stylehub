@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+/* `dark:` utilities follow the .dark class on <html> (set by ThemeContext) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Colour tokens. Every text/background pair below meets WCAG AA (4.5:1) in both themes:
+  fg/muted on bg/surface/surface-2, white on accent, accent-text/sale/success on surface.
+*/
+:root {
+  color-scheme: light;
+  --bg: #f6f6f8;
+  --surface: #ffffff;
+  --surface-2: #f0f0f4;
+  --surface-3: #e6e6ec;
+  --fg: #15151c;
+  --muted: #55556a;
+  --line: #e2e2e9;
+  --line-strong: #c9c9d4;
+  --accent: #e11d48;
+  --accent-hover: #be123c;
+  --accent-text: #be123c;
+  --accent-soft: #ffe4ea;
+  --on-accent: #ffffff;
+  --sale: #c2410c;
+  --success: #047857;
+  --on-success: #ffffff;
+  --success-soft: #d1fae5;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --star: #b45309;
+  --ink: #15151c;
+  --on-ink: #ffffff;
+  --shadow: 0 1px 2px rgb(21 21 28 / 0.06), 0 8px 24px -12px rgb(21 21 28 / 0.18);
+  --shadow-lg: 0 24px 64px -24px rgb(21 21 28 / 0.35);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0b0b0f;
+  --surface: #15151c;
+  --surface-2: #1e1e27;
+  --surface-3: #2a2a35;
+  --fg: #f3f3f6;
+  --muted: #a9a9bc;
+  --line: #2a2a35;
+  --line-strong: #3d3d4b;
+  --accent: #e11d48;
+  --accent-hover: #f43f5e;
+  --accent-text: #fb7185;
+  --accent-soft: #3a0d1b;
+  --on-accent: #ffffff;
+  --sale: #fb923c;
+  --success: #34d399;
+  --on-success: #062e22;
+  --success-soft: #0b3326;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --star: #fbbf24;
+  --ink: #f3f3f6;
+  --on-ink: #15151c;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 24px 64px -24px rgb(0 0 0 / 0.8);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-sale: var(--sale);
+  --color-success: var(--success);
+  --color-on-success: var(--on-success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-star: var(--star);
+  --color-ink: var(--ink);
+  --color-on-ink: var(--on-ink);
+  --shadow-card: var(--shadow);
+  --shadow-float: var(--shadow-lg);
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  input, select, textarea {
+    @apply text-fg;
+  }
+  input::placeholder, textarea::placeholder {
+    color: var(--muted);
+    opacity: 0.85;
+  }
+}
+
+/* Reusable component classes (declared with @utility so they can be combined with @apply) */
+@utility container-x {
+  @apply mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-10;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold tracking-wide transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98];
+}
+@utility btn-primary {
+  @apply btn bg-accent text-on-accent hover:bg-accent-hover shadow-[0_8px_20px_-8px_var(--accent)];
+}
+@utility btn-dark {
+  @apply btn bg-ink text-on-ink hover:opacity-90;
+}
+@utility btn-outline {
+  @apply btn border border-line-strong bg-surface text-fg hover:border-fg;
+}
+@utility btn-ghost {
+  @apply btn text-fg hover:bg-surface-2;
+}
+@utility input {
+  @apply block w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-fg transition focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/15;
+}
+@utility label {
+  @apply mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted;
+}
+@utility card {
+  @apply rounded-2xl border border-line bg-surface;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm font-semibold text-fg transition hover:border-fg;
+}
+@utility chip-active {
+  @apply border-fg bg-ink text-on-ink hover:border-fg;
+}
+@utility section-title {
+  @apply font-display text-2xl font-semibold tracking-tight text-fg md:text-4xl;
+}
+@utility eyebrow {
+  @apply text-xs font-extrabold uppercase tracking-[0.2em] text-accent-text;
+}
+@utility link {
+  @apply font-bold text-accent-text underline-offset-4 hover:underline;
+}
+
+@layer utilities {
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out both;
+  }
+  .animate-slide-up {
+    animation: slide-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .animate-slide-in-left {
+    animation: slide-in-left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .animate-marquee {
+    animation: marquee 32s linear infinite;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

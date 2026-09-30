@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /checkout
+Disallow: /cart
+Disallow: /profile
+
+Sitemap: https://electrohub.vercel.app/sitemap.xml
