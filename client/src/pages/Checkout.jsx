@@ -95,10 +95,10 @@ const Checkout = () => {
   };
 
   useEffect(() => {
-    if (!cartLoading && cart.length === 0 && step !== 3) {
+    if (!cartLoading && cart.length === 0 && !placed && step !== 3) {
       navigate('/cart', { replace: true });
     }
-  }, [cart.length, cartLoading, navigate, step]);
+  }, [cart.length, cartLoading, navigate, placed, step]);
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress) return toast.error('Please select an address');
