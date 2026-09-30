@@ -311,11 +311,11 @@ const ProductDetail = () => {
       'availability': product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       'itemCondition': 'https://schema.org/NewCondition'
     },
-    ...(summary?.total_reviews > 0 ? {
+    ...(ratingSummary?.total_reviews > 0 ? {
       'aggregateRating': {
         '@type': 'AggregateRating',
-        'ratingValue': summary.avg_rating,
-        'reviewCount': summary.total_reviews
+        'ratingValue': ratingSummary.avg_rating,
+        'reviewCount': ratingSummary.total_reviews
       }
     } : {})
   } : null;
