@@ -52,6 +52,20 @@ const schemaPath = path.resolve(__dirname, 'schema.sql');
 const schema = fs.readFileSync(schemaPath, 'utf8');
 db.exec(schema);
 
+// Ensure demo and admin users exist if table is empty
+try {
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get()?.count || 0;
+  if (userCount === 0) {
+    const bcrypt = require('bcryptjs');
+    const demoHash = bcrypt.hashSync('Demo@123', 8);
+    const adminHash = bcrypt.hashSync('Admin@123', 8);
+    db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Demo User', 'demo@electrohub.com', demoHash, 'customer');
+    db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Store Admin', 'admin@electrohub.com', adminHash, 'admin');
+  }
+} catch (err) {
+  console.error('Error auto-seeding users:', err);
+}
+
 console.log('Database initialized successfully.');
 
 module.exports = db;

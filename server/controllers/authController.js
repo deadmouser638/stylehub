@@ -73,7 +73,8 @@ exports.login = async (req, res) => {
 
     return successResponse(res, 200, { user: userWithoutPassword, token }, 'Logged in successfully');
   } catch (error) {
-    return errorResponse(res, 500, 'Server error');
+    console.error('Login error:', error);
+    return errorResponse(res, 500, error.message || 'Server error during login');
   }
 };
 
