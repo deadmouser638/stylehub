@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    ['electrohub_cart_cache', 'electrohub_orders_cache', 'electrohub_addresses_cache', 'electrohub_admin_orders'].forEach(key => localStorage.removeItem(key));
     setUser(null);
   };
 

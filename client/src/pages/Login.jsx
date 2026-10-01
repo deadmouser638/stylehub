@@ -33,7 +33,7 @@ const Login = () => {
   if (user && !submitting) return <Navigate to={redirectTo} replace />;
 
   return (
-    <AuthLayout image="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1000&q=80&auto=format&fit=crop" heading="Welcome back" subheading="Log in to pick up where you left off.">
+    <AuthLayout image="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1000&q=80&auto=format&fit=crop" heading="Welcome back" subheading="Log in to pick up where you left off.">
       <h1 className="font-display text-3xl font-semibold">Log in</h1>
       <p className="mt-1 text-sm text-muted">New here? <Link to="/register" state={location.state} className="link">Create an account</Link></p>
 

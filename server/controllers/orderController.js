@@ -47,14 +47,7 @@ exports.createOrder = async (req, res) => {
         console.error('Error inserting fallback address:', err);
       }
     }
-    if (!address) {
-      // Auto-create default demo address so order placement NEVER gets blocked
-      const info = db.prepare(`
-        INSERT INTO addresses (user_id, name, phone, pincode, address_line, city, state, type, is_default)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-      `).run(user_id, 'Demo User', '9876543210', '400001', 'Flat 402, Sunshine Towers, Marine Drive', 'Mumbai', 'Maharashtra', 'Home');
-      address = db.prepare('SELECT * FROM addresses WHERE id = ?').get(info.lastInsertRowid);
-    }
+    if (!address) return errorResponse(res, 400, 'Please add a delivery address before checkout');
 
     let cartItems = db.prepare(`
       SELECT c.*, p.name, p.price, p.discount_percent, p.stock, p.images, p.is_active
@@ -83,11 +76,8 @@ exports.createOrder = async (req, res) => {
 
     let totalAmount = 0;
     for (const item of cartItems) {
-      // If stock is low, auto-restock so checkout never crashes in a demo
-      if (item.stock < item.quantity) {
-        adjustStock(item.product_id, Math.max(50, item.quantity), 'Restock for order', 'Checkout');
-        item.stock += Math.max(50, item.quantity);
-      }
+      if (!Number.isInteger(item.quantity) || item.quantity < 1) return errorResponse(res, 400, 'Invalid quantity');
+      if (!item.is_active || item.stock < item.quantity) return errorResponse(res, 409, `${item.name} is unavailable in the requested quantity`);
       const itemPrice = item.price - (item.price * item.discount_percent / 100);
       totalAmount += itemPrice * item.quantity;
     }
@@ -178,21 +168,8 @@ exports.cancelAndRestock = cancelAndRestock;
 exports.cancelOrder = (req, res) => {
   try {
     let order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-    if (!order) {
-      // Look up without user_id restriction just in case
-      order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
-    }
-    if (!order) {
-      try {
-        db.prepare(`
-          INSERT INTO orders (id, user_id, status, payment_status, total_amount, updated_at)
-          VALUES (?, ?, 'Cancelled', 'Refund Initiated', 0, CURRENT_TIMESTAMP)
-        `).run(req.params.id, req.user.id);
-        return successResponse(res, 200, null, 'Order cancelled');
-      } catch (err) {
-        return successResponse(res, 200, null, 'Order cancelled');
-      }
-    }
+    if (!order) return errorResponse(res, 404, 'Order not found');
+    if (!CANCELLABLE.includes(order.status)) return errorResponse(res, 400, 'This order can no longer be cancelled');
     cancelAndRestock(order, 'Cancelled by customer');
     return successResponse(res, 200, null, 'Order cancelled');
   } catch (error) {

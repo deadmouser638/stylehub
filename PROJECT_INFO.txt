@@ -1,0 +1,52 @@
+================================================================================
+ELECTROHUB - FULL-STACK E-COMMERCE PLATFORM
+================================================================================
+
+LIVE DEMO URL:
+https://stylehub-three-iota.vercel.app
+
+CREDENTIALS FOR DEMO:
+--------------------------------------------------------------------------------
+1. Customer Account:
+   - Email: demo@electrohub.com
+   - Password: Demo@123
+
+2. Admin Portal:
+   - URL: https://stylehub-three-iota.vercel.app/admin
+   - Email: admin@electrohub.com
+   - Password: Admin@123
+
+TECH STACK:
+--------------------------------------------------------------------------------
+- Frontend: React 18, Vite, Tailwind CSS, Lucide React, React Hot Toast
+- Backend: Node.js, Express, better-sqlite3 (SQLite)
+- Deployment: Vercel Serverless (Region: bom1 - Mumbai, India)
+- Features:
+  * Electronics catalog (238 products across 9 categories)
+  * Real-time search, visual similarity search, filters & price sorting
+  * Cart, Wishlist, Checkout with COD, UPI QR Code, Card
+  * Multi-step order tracking & real-time order status updates
+  * Admin dashboard with stock management, coupon management, and order status stepper
+  * Instant optimistic caching & cross-tab sync
+
+LOCAL RUN INSTRUCTIONS:
+--------------------------------------------------------------------------------
+Prerequisites: Node.js (v18+)
+
+Option 1: Windows Double-Click
+   Double-click `start.bat` in the project root.
+
+Option 2: Terminal
+   1. Install dependencies:
+      cd server && npm install
+      cd ../client && npm install
+   2. Start backend:
+      cd server && npm start   (runs on http://localhost:5000)
+   3. Start frontend:
+      cd client && npm run dev (runs on http://localhost:5173)
+
+DATABASE:
+--------------------------------------------------------------------------------
+The pre-seeded SQLite database `server/database.sqlite` is included with all 238 products,
+reviews, demo users, and demo orders ready to use.
+================================================================================

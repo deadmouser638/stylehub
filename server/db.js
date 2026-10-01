@@ -1,4 +1,4 @@
-const Database = require('better-sqlite3');
+const Database = require('./sqlite');
 const path = require('path');
 const fs = require('fs');
 
@@ -50,6 +50,7 @@ const MIGRATIONS = [
   ['products', 'is_active', 'INTEGER DEFAULT 1'],
   ['orders', 'payment_status', "TEXT DEFAULT 'Pending'"],
   ['orders', 'payment_ref', 'TEXT'],
+  ['orders', 'gateway_order_id', 'TEXT'],
   ['orders', 'coupon_code', 'TEXT'],
   ['orders', 'delivery_fee', 'REAL DEFAULT 0'],
   ['orders', 'updated_at', 'DATETIME'],

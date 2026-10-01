@@ -15,9 +15,10 @@ const orderRoutes = require('./routes/orders');
 const reviewRoutes = require('./routes/reviews');
 
 const app = express();
+const path = require('path');
 
 // Middleware
-app.use(helmet()); // Security headers
+app.use(helmet({ contentSecurityPolicy: false })); // Security headers
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev')); // Request logging
@@ -34,7 +35,7 @@ app.use((req, res, next) => {
 
 // Health Check Route
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'StyleHub API is running' });
+  res.status(200).json({ status: 'ok', message: 'ElectroHub API is running' });
 });
 
 // Routes
@@ -61,6 +62,13 @@ app.get('/api/offers', (req, res) => {
 });
 
 app.use('/api', reviewRoutes); // Review routes include /api/products/:productId/reviews
+
+// Serve the built app from the same origin for a one-command demo.
+app.use(express.static(path.join(__dirname, '../client/dist')));
+app.get('/{*path}', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ success: false, message: 'Endpoint not found' });
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});
 
 // Basic Centralized Error Handler
 app.use((err, req, res, next) => {

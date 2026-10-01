@@ -19,6 +19,7 @@ const getLocalCart = () => {
 const saveLocalCart = (items) => {
   try {
     localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(items || []));
+    localStorage.setItem('electrohub_cart_owner', localStorage.getItem('token') ? 'account' : 'guest');
   } catch {}
 };
 
@@ -60,7 +61,8 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     if (!authLoading && user) {
       const localItems = getLocalCart();
-      if (localItems.length > 0) {
+      if (localItems.length > 0 && localStorage.getItem('electrohub_cart_owner') === 'guest') {
+        localStorage.setItem('electrohub_cart_owner', 'account');
         // Sync local items to server
         Promise.all(
           localItems.map(item =>

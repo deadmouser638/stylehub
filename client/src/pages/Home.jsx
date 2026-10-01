@@ -7,6 +7,7 @@ import Countdown from '../components/ui/Countdown';
 import ProductCard from '../components/ui/ProductCard';
 import FeatureSpotlight from '../components/ui/FeatureSpotlight';
 import SEO from '../components/SEO';
+import ExperienceHero from '../components/ExperienceHero';
 import { CatalogContext, categoryPath } from '../context/CatalogContext';
 import { UIContext } from '../context/UIContext';
 import { getRecentlyViewed } from '../utils/storage';
@@ -124,36 +125,14 @@ const Home = () => {
         schemaJson={homeSchema}
       />
 
-      {/* Hero bento */}
-      <section className="container-x pt-4 md:pt-6">
-        <div className="grid auto-rows-[220px] grid-cols-2 gap-3 md:h-[600px] md:auto-rows-auto md:grid-cols-4 md:grid-rows-2 md:gap-4">
-          {hero.map((tile, i) => (
-            <Link
-              key={tile.title + i}
-              to={tile.to}
-              className={`group relative overflow-hidden rounded-3xl bg-surface-2 ${tile.className} ${i === 0 ? 'col-span-2 row-span-2' : i === 1 ? 'col-span-2' : ''}`}
-            >
-              <img src={tile.img} alt={tile.title} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" fetchpriority={i === 0 ? 'high' : 'auto'} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-              <div className={`absolute inset-x-0 bottom-0 text-white ${tile.big ? 'p-6 md:p-10' : 'p-5'}`}>
-                {tile.big && <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-widest backdrop-blur"><Sparkles size={14} /> Just landed</p>}
-                <h1 className={`font-display font-semibold leading-[1.05] text-balance ${tile.big ? 'text-4xl md:text-6xl' : 'text-2xl'}`}>{tile.title}</h1>
-                <p className={`mt-2 font-semibold text-white/90 ${tile.big ? 'max-w-md text-base md:text-lg' : 'text-sm'}`}>{tile.text}</p>
-                <span className={`mt-4 inline-flex items-center gap-2 rounded-full bg-white font-bold text-black transition group-hover:gap-3 ${tile.big ? 'px-6 py-3 text-sm' : 'px-4 py-2 text-xs'}`}>
-                  {tile.cta} <ArrowRight size={16} />
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <ExperienceHero />
 
       {/* Shop by category */}
-      <section className="container-x" aria-label="Shop by category">
+      <section id="collections" className="container-x" aria-label="Shop by category">
         <div className="mb-6 flex items-end justify-between">
           <div>
             <p className="eyebrow mb-2">Explore</p>
-            <h2 className="section-title">Shop by category</h2>
+            <h2 className="section-title eh-collection-title">Your next obsession.</h2>
           </div>
         </div>
         <div className="hide-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 xl:mx-0 xl:grid xl:grid-cols-9 xl:overflow-visible xl:px-0">

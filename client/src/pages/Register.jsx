@@ -55,7 +55,7 @@ const Register = () => {
   const strength = passwordStrength(formData.password);
 
   return (
-    <AuthLayout image="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1000&q=80&auto=format&fit=crop" heading="Join ElectroHub" subheading="Unlock exclusive offers, faster checkout and order tracking.">
+    <AuthLayout image="https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1000&q=80&auto=format&fit=crop" heading="Join ElectroHub" subheading="Unlock exclusive offers, faster checkout and order tracking.">
       <h1 className="font-display text-3xl font-semibold">Create account</h1>
       <p className="mt-1 text-sm text-muted">Already have one? <Link to="/login" state={location.state} className="link">Log in</Link></p>
 

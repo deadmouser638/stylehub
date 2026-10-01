@@ -76,6 +76,7 @@ exports.createRazorpayOrder = async (req, res) => {
       return errorResponse(res, 502, data.error?.description || 'Could not start card payment');
     }
 
+    db.prepare('UPDATE orders SET gateway_order_id = ? WHERE id = ?').run(data.id, order.id);
     return successResponse(res, 200, {
       keyId: RAZORPAY_KEY_ID,
       razorpayOrderId: data.id,
@@ -98,6 +99,8 @@ exports.verifyRazorpayPayment = (req, res) => {
     const order = ownOrder(req);
     if (!order) return errorResponse(res, 404, 'Order not found');
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) return errorResponse(res, 400, 'Missing payment details');
+
+    if (order.payment_method !== 'Card' || order.payment_status !== 'Pending' || order.status === 'Cancelled' || order.gateway_order_id !== razorpay_order_id) return errorResponse(res, 400, 'Payment does not match this pending order');
 
     const expected = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest('hex');
     const valid = expected.length === razorpay_signature.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(razorpay_signature));

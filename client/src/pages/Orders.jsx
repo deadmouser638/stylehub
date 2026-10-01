@@ -50,26 +50,7 @@ const Orders = () => {
     try {
       const res = await api.get('/orders');
       const serverOrders = res.data.data || [];
-      const localOrders = getCachedOrders();
-      // Merge unique orders, preserving locally updated status if newer
-      const orderMap = new Map();
-      serverOrders.forEach(o => orderMap.set(o.id, o));
-      localOrders.forEach(o => {
-        const existing = orderMap.get(o.id);
-        if (!existing) {
-          orderMap.set(o.id, o);
-        } else {
-          // If local has newer updated_at or is cancelled/advanced, retain the newer status
-          const localUpdated = local.updated_at ? new Date(local.updated_at).getTime() : 0;
-          const serverUpdated = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
-          if (localUpdated >= serverUpdated) {
-            orderMap.set(o.id, { ...existing, ...local });
-          } else {
-            orderMap.set(o.id, { ...local, ...existing });
-          }
-        }
-      });
-      const merged = Array.from(orderMap.values()).sort((a, b) => (new Date(b.created_at) - new Date(a.created_at)) || (b.id - a.id));
+      const merged = serverOrders;
       setOrders(merged);
       try { localStorage.setItem(ORDERS_KEY, JSON.stringify(merged)); } catch {}
     } catch (err) {
@@ -110,26 +91,12 @@ const Orders = () => {
     if (!window.confirm(`Cancel order #${orderId}?`)) return;
     setCancellingId(orderId);
     
-    // Immediate optimistic update
-    const nowIso = new Date().toISOString();
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Cancelled', payment_status: 'Refund Initiated', updated_at: nowIso } : o));
-    try {
-      const list = getCachedOrders();
-      const updated = list.map(o => o.id === orderId ? { ...o, status: 'Cancelled', payment_status: 'Refund Initiated', updated_at: nowIso } : o);
-      localStorage.setItem(ORDERS_KEY, JSON.stringify(updated));
-
-      const adminList = JSON.parse(localStorage.getItem('electrohub_admin_orders') || '[]');
-      const adminUpdated = adminList.map(o => o.id === orderId ? { ...o, status: 'Cancelled', payment_status: 'Refund Initiated', updated_at: nowIso } : o);
-      localStorage.setItem('electrohub_admin_orders', JSON.stringify(adminUpdated));
-
-      window.dispatchEvent(new CustomEvent('electrohub_order_updated', { detail: { orderId, status: 'Cancelled' } }));
-    } catch {}
-
-    toast.success('Order cancelled');
     try {
       await api.put(`/orders/${orderId}/cancel`);
+      await fetchOrders();
+      toast.success('Order cancelled');
     } catch (err) {
-      console.warn('Server cancel warning:', err);
+      toast.error(err.response?.data?.message || 'Could not cancel order');
     } finally {
       setCancellingId(null);
     }
