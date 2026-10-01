@@ -69,7 +69,7 @@ function App() {
                         <Route path="/register" element={<Register />} />
                         <Route path="/help/:slug" element={<HelpPage />} />
                         <Route path="/track" element={<TrackOrder />} />
-                        <Route path="/cart" element={protect(<Cart />)} />
+                        <Route path="/cart" element={<Cart />} />
                         <Route path="/wishlist" element={protect(<Wishlist />)} />
                         <Route path="/checkout" element={protect(<Checkout />)} />
                         <Route path="/orders" element={protect(<Orders />)} />

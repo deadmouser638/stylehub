@@ -8,25 +8,43 @@ let dbPath = path.resolve(__dirname, 'database.sqlite');
 if (isVercel) {
   const tmpPath = path.join('/tmp', 'database.sqlite');
   try {
-    if (!fs.existsSync(tmpPath) && fs.existsSync(dbPath)) {
-      fs.copyFileSync(dbPath, tmpPath);
+    if (!fs.existsSync(tmpPath)) {
+      const candidates = [
+        dbPath,
+        path.resolve(process.cwd(), 'server', 'database.sqlite'),
+        path.resolve(process.cwd(), 'database.sqlite'),
+        path.join(__dirname, '..', 'server', 'database.sqlite')
+      ];
+      const source = candidates.find(c => fs.existsSync(c));
+      if (source) {
+        fs.copyFileSync(source, tmpPath);
+      }
     }
-    if (fs.existsSync(tmpPath)) {
-      dbPath = tmpPath;
-    }
+    dbPath = tmpPath;
   } catch (err) {
     console.error('Error handling Vercel /tmp db copy:', err);
+    dbPath = path.join('/tmp', 'database.sqlite');
   }
 }
 
 // Set DEBUG_SQL=1 to log every query
 const db = new Database(dbPath, process.env.DEBUG_SQL ? { verbose: console.log } : {});
 
-// Enable foreign keys
+// Enable foreign keys and WAL mode for fast concurrency
 db.pragma('foreign_keys = ON');
+try { db.pragma('journal_mode = WAL'); } catch {}
 
-// Columns added after the first release. CREATE TABLE IF NOT EXISTS doesn't change
-// existing tables, so older databases get them here before the schema runs.
+// Automatically initialize schema only if products table does not exist
+const hasProducts = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'products'").get();
+if (!hasProducts) {
+  const schemaPath = path.resolve(__dirname, 'schema.sql');
+  if (fs.existsSync(schemaPath)) {
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    db.exec(schema);
+  }
+}
+
+// Columns added after the first release
 const MIGRATIONS = [
   ['users', 'role', "TEXT DEFAULT 'customer'"],
   ['products', 'is_active', 'INTEGER DEFAULT 1'],
@@ -41,26 +59,23 @@ const MIGRATIONS = [
   ['orders', 'tracking_number', 'TEXT'],
 ];
 for (const [table, column, definition] of MIGRATIONS) {
-  const exists = db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(table);
-  if (!exists) continue;
-  const columns = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
-  if (!columns.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  try {
+    const exists = db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(table);
+    if (!exists) continue;
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+    if (!columns.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch {}
 }
 
-// Automatically initialize schema
-const schemaPath = path.resolve(__dirname, 'schema.sql');
-const schema = fs.readFileSync(schemaPath, 'utf8');
-db.exec(schema);
+// Precomputed bcrypt hashes for instant initialization (cost 8)
+const DEMO_HASH = '$2b$08$RuS2/hMZPh6Rww0MG0a.yeuDXvQrALjx6ocIwNUBaSR4HYDlteOdK';
+const ADMIN_HASH = '$2b$08$WbY06qofXpBVmZwiiwp0D.6juuRGMDxmehAJnbk3lOrI/ze6UGWai';
 
-// Ensure demo and admin users exist if table is empty
 try {
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get()?.count || 0;
   if (userCount === 0) {
-    const bcrypt = require('bcryptjs');
-    const demoHash = bcrypt.hashSync('Demo@123', 8);
-    const adminHash = bcrypt.hashSync('Admin@123', 8);
-    db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Demo User', 'demo@electrohub.com', demoHash, 'customer');
-    db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Store Admin', 'admin@electrohub.com', adminHash, 'admin');
+    db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Demo User', 'demo@electrohub.com', DEMO_HASH, 'customer');
+    db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Store Admin', 'admin@electrohub.com', ADMIN_HASH, 'admin');
   }
 
   const demoUser = db.prepare("SELECT id FROM users WHERE email = 'demo@electrohub.com'").get();

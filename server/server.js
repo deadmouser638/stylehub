@@ -22,6 +22,16 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev')); // Request logging
 
+// Edge Caching & Cache-Control headers
+app.use((req, res, next) => {
+  if (req.method === 'GET' && (req.path.startsWith('/api/products') || req.path === '/api/offers')) {
+    res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+  } else if (req.path.startsWith('/api/auth') || req.path.startsWith('/api/cart') || req.path.startsWith('/api/orders') || req.path.startsWith('/api/addresses')) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  }
+  next();
+});
+
 // Health Check Route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'StyleHub API is running' });

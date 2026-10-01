@@ -29,18 +29,40 @@ const PAYMENT_TEXT = {
   Refunded: 'Refunded',
 };
 
+const ORDERS_KEY = 'electrohub_orders_cache';
+
+const getCachedOrders = () => {
+  try {
+    const saved = localStorage.getItem(ORDERS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
 const Orders = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState(getCachedOrders);
+  const [loading, setLoading] = useState(() => getCachedOrders().length === 0);
   const [cancellingId, setCancellingId] = useState(null);
   const [upiPayment, setUpiPayment] = useState(null);
 
   const fetchOrders = async () => {
     try {
       const res = await api.get('/orders');
-      setOrders(res.data.data);
+      const serverOrders = res.data.data || [];
+      const localOrders = getCachedOrders();
+      // Merge unique orders
+      const orderMap = new Map();
+      localOrders.forEach(o => orderMap.set(o.id, o));
+      serverOrders.forEach(o => orderMap.set(o.id, o));
+      const merged = Array.from(orderMap.values()).sort((a, b) => (new Date(b.created_at) - new Date(a.created_at)) || (b.id - a.id));
+      setOrders(merged);
+      try { localStorage.setItem(ORDERS_KEY, JSON.stringify(merged)); } catch {}
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load orders');
+      console.error('Error fetching orders:', err);
+      const fallback = getCachedOrders();
+      if (fallback.length > 0) setOrders(fallback);
+      else toast.error(err.response?.data?.message || 'Failed to load orders');
     } finally {
       setLoading(false);
     }

@@ -44,10 +44,33 @@ const Checkout = () => {
     }
   });
   const [step, setStep] = useState(() => (placed ? 3 : 1)); // 1 = address, 2 = payment, 3 = confirmed
-  const [addresses, setAddresses] = useState([]);
-  const [addressesLoading, setAddressesLoading] = useState(true);
+  const [addresses, setAddresses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('electrohub_addresses_cache');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [addressesLoading, setAddressesLoading] = useState(() => {
+    try {
+      const saved = localStorage.getItem('electrohub_addresses_cache');
+      return !(saved && JSON.parse(saved).length > 0);
+    } catch {
+      return true;
+    }
+  });
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [selectedAddress, setSelectedAddress] = useState(() => {
+    try {
+      const saved = localStorage.getItem('electrohub_addresses_cache');
+      const list = saved ? JSON.parse(saved) : [];
+      const preferred = list.find(a => a.is_default) || list[0];
+      return preferred ? preferred.id : null;
+    } catch {
+      return null;
+    }
+  });
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [placing, setPlacing] = useState(false);
   const [payConfig, setPayConfig] = useState({ upi: { enabled: true }, card: { enabled: false }, cod: { enabled: true } });
@@ -60,11 +83,26 @@ const Checkout = () => {
       const res = await api.get('/addresses');
       const list = res.data.data;
       setAddresses(list);
+      try { localStorage.setItem('electrohub_addresses_cache', JSON.stringify(list)); } catch {}
       setShowAddressForm(list.length === 0);
       const preferred = list.find(a => a.id === preferredId) || list.find(a => a.is_default) || list[0];
       setSelectedAddress(preferred ? preferred.id : null);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not load addresses');
+      console.error('Could not load addresses from server:', err);
+      try {
+        const saved = localStorage.getItem('electrohub_addresses_cache');
+        const list = saved ? JSON.parse(saved) : [];
+        if (list.length > 0) {
+          setAddresses(list);
+          setShowAddressForm(false);
+          const preferred = list.find(a => a.id === preferredId) || list.find(a => a.is_default) || list[0];
+          setSelectedAddress(preferred ? preferred.id : null);
+        } else {
+          toast.error(err.response?.data?.message || 'Could not load addresses');
+        }
+      } catch {
+        toast.error(err.response?.data?.message || 'Could not load addresses');
+      }
     } finally {
       setAddressesLoading(false);
     }
@@ -134,6 +172,20 @@ const Checkout = () => {
       try {
         sessionStorage.setItem('last_placed_order', JSON.stringify(order));
         sessionStorage.setItem('last_payment_state', initialPState);
+        const existingOrders = JSON.parse(localStorage.getItem('electrohub_orders_cache') || '[]');
+        const newOrderRecord = {
+          id: order.orderId,
+          created_at: new Date().toISOString(),
+          total_amount: order.amount,
+          payment_method: order.paymentMethod,
+          payment_status: order.paymentStatus || (order.paymentMethod === 'COD' ? 'Pay on Delivery' : 'Pending'),
+          status: 'Confirmed',
+          items: cart.map(i => ({ id: i.id, product_id: i.product_id || i.id, name: i.name, price: i.price, quantity: i.quantity, image: i.images?.[0] })),
+          address_snapshot: addresses.find(a => a.id === targetAddressId) || addresses[0] || {},
+          history: [{ status: 'Placed', note: 'Order placed', created_at: new Date().toISOString() }],
+        };
+        const updatedOrders = [newOrderRecord, ...existingOrders.filter(o => o.id !== order.orderId)];
+        localStorage.setItem('electrohub_orders_cache', JSON.stringify(updatedOrders));
       } catch {}
       if (order.paymentMethod === 'Card') payByCard(order);
       setAppliedCoupon(null);

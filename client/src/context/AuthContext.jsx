@@ -3,9 +3,31 @@ import api from '../utils/api';
 
 export const AuthContext = createContext();
 
+const USER_CACHE_KEY = 'electrohub_user_cache';
+
+const getCachedUser = () => {
+  try {
+    const saved = localStorage.getItem(USER_CACHE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUserState] = useState(getCachedUser);
+  const [loading, setLoading] = useState(() => !getCachedUser() && Boolean(localStorage.getItem('token')));
+
+  const setUser = (newUser) => {
+    setUserState(prev => {
+      const next = typeof newUser === 'function' ? newUser(prev) : newUser;
+      try {
+        if (next) localStorage.setItem(USER_CACHE_KEY, JSON.stringify(next));
+        else localStorage.removeItem(USER_CACHE_KEY);
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -15,9 +37,14 @@ export const AuthProvider = ({ children }) => {
           const res = await api.get('/auth/me');
           setUser(res.data.data);
         } catch (error) {
-          console.error('Auth error', error);
-          localStorage.removeItem('token');
+          console.error('Auth check error:', error);
+          if (error.response?.status === 401) {
+            localStorage.removeItem('token');
+            setUser(null);
+          }
         }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     };

@@ -246,7 +246,6 @@ const ProductDetail = () => {
   const requireLogin = () => navigate('/login', { state: { from: location.pathname } });
 
   const handleAddToCart = async () => {
-    if (!user) return requireLogin();
     if (inBag) return navigate('/cart');
     if (needsSize && !selectedSize) {
       setSizeError(true);
@@ -259,7 +258,6 @@ const ProductDetail = () => {
   };
 
   const handleWishlist = () => {
-    if (!user) return requireLogin();
     if (isWishlisted) removeFromWishlist(product.id);
     else addToWishlist(product.id);
   };

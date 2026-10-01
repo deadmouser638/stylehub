@@ -6,46 +6,97 @@ import { CartContext } from './CartContext';
 
 export const WishlistContext = createContext();
 
+const LOCAL_WISHLIST_KEY = 'electrohub_wishlist_cache';
+
+const getLocalWishlist = () => {
+  try {
+    const saved = localStorage.getItem(LOCAL_WISHLIST_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalWishlist = (items) => {
+  try {
+    localStorage.setItem(LOCAL_WISHLIST_KEY, JSON.stringify(items || []));
+  } catch {}
+};
+
 export const WishlistProvider = ({ children }) => {
-  const [wishlist, setWishlist] = useState([]);
+  const [wishlist, setWishlistState] = useState(getLocalWishlist);
   const { user, loading: authLoading } = useContext(AuthContext);
   const { fetchCart } = useContext(CartContext);
 
+  const setWishlist = useCallback((itemsOrFn) => {
+    setWishlistState(prev => {
+      const next = typeof itemsOrFn === 'function' ? itemsOrFn(prev) : itemsOrFn;
+      saveLocalWishlist(next);
+      return next;
+    });
+  }, []);
+
   const fetchWishlist = useCallback(async () => {
-    if (!user) { setWishlist([]); return; }
+    if (!user) {
+      setWishlistState(getLocalWishlist());
+      return;
+    }
     try {
       const res = await api.get('/wishlist');
-      setWishlist(res.data.data);
+      const serverItems = res.data.data;
+      setWishlistState(serverItems);
+      saveLocalWishlist(serverItems);
     } catch (err) {
       console.error(err);
+      setWishlistState(getLocalWishlist());
     }
   }, [user]);
 
   useEffect(() => {
-    if (!authLoading) fetchWishlist();
-  }, [authLoading, fetchWishlist]);
+    if (!authLoading && user) {
+      const local = getLocalWishlist();
+      if (local.length > 0) {
+        Promise.all(local.map(item => api.post(`/wishlist/${item.product_id || item.id}`).catch(() => {})))
+          .finally(() => fetchWishlist());
+      } else {
+        fetchWishlist();
+      }
+    } else if (!authLoading && !user) {
+      setWishlistState(getLocalWishlist());
+    }
+  }, [authLoading, user, fetchWishlist]);
 
   const addToWishlist = async (productId) => {
-    if (!user) {
-      toast.error('Please login first');
-      return false;
-    }
-    try {
-      await api.post(`/wishlist/${productId}`);
-      await fetchWishlist();
+    if (user) {
+      try {
+        await api.post(`/wishlist/${productId}`);
+        await fetchWishlist();
+        toast.success('Added to wishlist');
+        return true;
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Error adding to wishlist');
+        return false;
+      }
+    } else {
+      setWishlist(prev => {
+        if (prev.some(item => (item.product_id === productId || item.id === productId))) return prev;
+        return [...prev, { id: productId, product_id: productId }];
+      });
+      toast.success('Saved to wishlist');
       return true;
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Error adding to wishlist');
-      return false;
     }
   };
 
   const removeFromWishlist = async (productId) => {
-    try {
-      await api.delete(`/wishlist/${productId}`);
-      await fetchWishlist();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Error removing from wishlist');
+    if (user) {
+      try {
+        await api.delete(`/wishlist/${productId}`);
+        await fetchWishlist();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Error removing from wishlist');
+      }
+    } else {
+      setWishlist(prev => prev.filter(i => (i.product_id !== productId && i.id !== productId)));
     }
   };
 

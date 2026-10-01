@@ -10,17 +10,33 @@ import { ThemeSelector } from '../components/ThemeToggle';
 import api from '../utils/api';
 import { formatDate } from '../utils/format';
 
+const ADDRESSES_KEY = 'electrohub_addresses_cache';
+
+const getCachedAddresses = () => {
+  try {
+    const saved = localStorage.getItem(ADDRESSES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
 const SavedAddresses = () => {
-  const [addresses, setAddresses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [addresses, setAddresses] = useState(getCachedAddresses);
+  const [loading, setLoading] = useState(() => getCachedAddresses().length === 0);
   const [showForm, setShowForm] = useState(false);
 
   const loadAddresses = async () => {
     try {
       const res = await api.get('/addresses');
-      setAddresses(res.data.data);
+      const list = res.data.data;
+      setAddresses(list);
+      try { localStorage.setItem(ADDRESSES_KEY, JSON.stringify(list)); } catch {}
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not load addresses');
+      console.error('Could not load addresses from server:', err);
+      const fallback = getCachedAddresses();
+      if (fallback.length > 0) setAddresses(fallback);
+      else toast.error(err.response?.data?.message || 'Could not load addresses');
     } finally {
       setLoading(false);
     }
@@ -136,6 +152,16 @@ const Profile = () => {
   const { cart } = useContext(CartContext);
   const [activeTab, setActiveTab] = useState('overview');
   const [profileData, setProfileData] = useState({ name: user?.name || '', phone: user?.phone || '', gender: user?.gender || '' });
+
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        phone: user.phone || '',
+        gender: user.gender || ''
+      });
+    }
+  }, [user]);
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();

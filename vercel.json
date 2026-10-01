@@ -1,7 +1,13 @@
 {
   "version": 2,
+  "regions": ["bom1"],
   "buildCommand": "cd server && npm install && node seed.js && cd ../client && npm install && npm run build",
   "outputDirectory": "client/dist",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "server/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

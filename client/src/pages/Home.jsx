@@ -35,21 +35,43 @@ const homeSchema = {
   }
 };
 
+const getCached = (key) => {
+  try {
+    const saved = sessionStorage.getItem(`electrohub_home_${key}`);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+const setCached = (key, data) => {
+  try {
+    sessionStorage.setItem(`electrohub_home_${key}`, JSON.stringify(data));
+  } catch {}
+};
+
 const Home = () => {
   const { categories } = useContext(CatalogContext);
   const { openVisualSearch, openSearch } = useContext(UIContext);
-  const [deals, setDeals] = useState([]);
-  const [newArrivals, setNewArrivals] = useState([]);
-  const [topRated, setTopRated] = useState([]);
-  const [trending, setTrending] = useState([]);
+  const [deals, setDeals] = useState(() => getCached('deals'));
+  const [newArrivals, setNewArrivals] = useState(() => getCached('newArrivals'));
+  const [topRated, setTopRated] = useState(() => getCached('topRated'));
+  const [trending, setTrending] = useState(() => getCached('trending'));
   const [trendingTab, setTrendingTab] = useState('All');
   const [recent, setRecent] = useState([]);
   const [hero, setHero] = useState(HERO);
-  const [loading, setLoading] = useState({ deals: true, newArrivals: true, topRated: true, trending: true });
+  const [loading, setLoading] = useState({
+    deals: getCached('deals').length === 0,
+    newArrivals: getCached('newArrivals').length === 0,
+    topRated: getCached('topRated').length === 0,
+    trending: getCached('trending').length === 0,
+  });
 
   useEffect(() => {
     const load = (key, url, setter) => api.get(url)
-      .then(res => setter(res.data.data))
+      .then(res => {
+        setter(res.data.data);
+        setCached(key, res.data.data);
+      })
       .catch(console.error)
       .finally(() => setLoading(l => ({ ...l, [key]: false })));
     load('deals', '/products/deals?limit=12', setDeals);
@@ -74,7 +96,12 @@ const Home = () => {
     let cancelled = false;
     setLoading(l => ({ ...l, trending: true }));
     api.get('/products/trending', { params: { limit: 8, category: trendingTab === 'All' ? undefined : trendingTab } })
-      .then(res => { if (!cancelled) setTrending(res.data.data); })
+      .then(res => {
+        if (!cancelled) {
+          setTrending(res.data.data);
+          if (trendingTab === 'All') setCached('trending', res.data.data);
+        }
+      })
       .catch(console.error)
       .finally(() => { if (!cancelled) setLoading(l => ({ ...l, trending: false })); });
     return () => { cancelled = true; };

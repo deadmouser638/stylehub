@@ -26,7 +26,6 @@ const ProductCard = ({ product, className = '' }) => {
 
   const handleWishlistClick = (e) => {
     e.preventDefault();
-    if (!user) return navigate('/login', { state: { from: location.pathname + location.search } });
     if (isWishlisted) removeFromWishlist(product.id);
     else addToWishlist(product.id);
   };
