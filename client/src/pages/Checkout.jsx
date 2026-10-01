@@ -193,6 +193,10 @@ const Checkout = () => {
         };
         const updatedOrders = [newOrderRecord, ...existingOrders.filter(o => o.id !== order.orderId)];
         localStorage.setItem('electrohub_orders_cache', JSON.stringify(updatedOrders));
+
+        const existingAdminOrders = JSON.parse(localStorage.getItem('electrohub_admin_orders') || '[]');
+        localStorage.setItem('electrohub_admin_orders', JSON.stringify([newOrderRecord, ...existingAdminOrders.filter(o => o.id !== order.orderId)]));
+        window.dispatchEvent(new CustomEvent('electrohub_order_updated', { detail: { orderId: order.orderId } }));
       } catch {}
       if (order.paymentMethod === 'Card') payByCard(order);
       setAppliedCoupon(null);
