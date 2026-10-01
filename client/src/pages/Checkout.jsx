@@ -159,8 +159,15 @@ const Checkout = () => {
 
     setPlacing(true);
     try {
+      const chosenAddress = addresses.find(a => a.id === targetAddressId) || addresses[0] || null;
       const res = await api.post('/orders', {
         address_id: targetAddressId,
+        address: chosenAddress,
+        items: cart.map(i => ({
+          product_id: i.product_id || i.id,
+          size: i.size || null,
+          quantity: i.quantity || 1,
+        })),
         payment_method: paymentMethod,
         coupon_code: appliedCoupon?.code,
       });

@@ -7,15 +7,34 @@ import { formatPrice, parseDbDate } from '../../utils/format';
 import { Pager } from './adminUi';
 
 const StockRow = ({ product, onChanged }) => {
-  const [qty, setQty] = useState(10);
+  const [stockVal, setStockVal] = useState(product.stock);
   const [busy, setBusy] = useState(false);
 
-  const adjust = async (sign) => {
-    const change = sign * Math.abs(Math.round(Number(qty) || 0));
-    if (!change) return toast.error('Enter a quantity');
+  useEffect(() => {
+    setStockVal(product.stock);
+  }, [product.stock]);
+
+  const saveStock = async (e) => {
+    if (e) e.preventDefault();
+    const target = Math.max(0, Math.round(Number(stockVal) || 0));
     setBusy(true);
     try {
-      const res = await api.post(`/admin/inventory/${product.id}/adjust`, { change, reason: sign > 0 ? 'Restock' : 'Stock correction' });
+      const res = await api.post(`/admin/inventory/${product.id}/set-stock`, { stock: target });
+      toast.success(res.data.message || `${product.brand}: stock saved to ${target}`);
+      onChanged();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not save stock');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const adjust = async (sign) => {
+    const nextStock = Math.max(0, Number(stockVal || 0) + sign);
+    setStockVal(nextStock);
+    setBusy(true);
+    try {
+      const res = await api.post(`/admin/inventory/${product.id}/set-stock`, { stock: nextStock });
       toast.success(`${product.brand}: stock now ${res.data.data.stock}`);
       onChanged();
     } catch (err) {
@@ -25,6 +44,7 @@ const StockRow = ({ product, onChanged }) => {
     }
   };
 
+  const isModified = Number(stockVal) !== Number(product.stock);
   const tone = product.stock === 0 ? 'text-danger' : product.stock <= 5 ? 'text-warning' : 'text-success';
   return (
     <li className="card flex flex-wrap items-center gap-3 p-3">
@@ -33,12 +53,26 @@ const StockRow = ({ product, onChanged }) => {
         <p className="truncate text-sm font-bold">{product.name}</p>
         <p className="text-xs text-muted">#{product.id} · {product.category} · {formatPrice(product.price * (100 - product.discount_percent) / 100)}</p>
       </div>
-      <p className={`w-20 text-center text-lg font-extrabold ${tone}`}>{product.stock}<span className="block text-[10px] font-bold uppercase text-muted">in stock</span></p>
-      <div className="flex items-center gap-1.5">
-        <button onClick={() => adjust(-1)} disabled={busy} className="grid h-9 w-9 place-items-center rounded-full border border-line-strong hover:border-fg" aria-label={`Remove stock from ${product.name}`}><Minus size={15} /></button>
-        <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} className="input w-16 px-2 py-1.5 text-center" aria-label="Quantity" />
-        <button onClick={() => adjust(1)} disabled={busy} className="grid h-9 w-9 place-items-center rounded-full bg-ink text-on-ink" aria-label={`Add stock to ${product.name}`}><Plus size={15} /></button>
-      </div>
+      <p className={`w-20 text-center text-lg font-extrabold ${tone}`}>{product.stock}<span className="block text-[10px] font-bold uppercase text-muted">current stock</span></p>
+      <form onSubmit={saveStock} className="flex items-center gap-1.5">
+        <button type="button" onClick={() => adjust(-1)} disabled={busy} className="grid h-9 w-9 place-items-center rounded-full border border-line-strong hover:border-fg" aria-label={`Remove 1 from ${product.name}`}><Minus size={15} /></button>
+        <input
+          type="number"
+          min="0"
+          value={stockVal}
+          onChange={e => setStockVal(e.target.value)}
+          className={`input w-20 px-2 py-1.5 text-center font-bold ${isModified ? 'border-accent ring-1 ring-accent' : ''}`}
+          aria-label="Stock quantity"
+        />
+        <button type="button" onClick={() => adjust(1)} disabled={busy} className="grid h-9 w-9 place-items-center rounded-full bg-surface-2 text-fg hover:bg-surface-3" aria-label={`Add 1 to ${product.name}`}><Plus size={15} /></button>
+        <button
+          type="submit"
+          disabled={busy || !isModified}
+          className={`rounded-xl px-4 py-2 text-xs font-extrabold transition ${isModified ? 'bg-accent text-on-accent shadow-sm' : 'bg-surface-2 text-muted opacity-60'}`}
+        >
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+      </form>
     </li>
   );
 };

@@ -27,6 +27,7 @@ router.delete('/offers/:id', admin.deleteOffer);
 router.get('/inventory/summary', admin.getInventorySummary);
 router.get('/inventory/movements', admin.listMovements);
 router.post('/inventory/:id/adjust', admin.adjustInventory);
+router.post('/inventory/:id/set-stock', admin.setInventoryStock);
 
 router.get('/orders', admin.listOrders);
 router.put('/orders/:id', admin.updateOrder);

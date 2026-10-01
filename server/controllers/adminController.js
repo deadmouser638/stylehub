@@ -145,8 +145,13 @@ exports.updateProduct = (req, res) => {
         gender = @gender, price = @price, discount_percent = @discount_percent, stock = @stock, rating = @rating, rating_count = @rating_count,
         colors = @colors, sizes = @sizes, images = @images, specs = @specs, is_active = @is_active
       WHERE id = @id
-    `).run({ ...data, stock: existing.stock, id: existing.id });
-    if (data.stock !== existing.stock) adjustStock(existing.id, data.stock - existing.stock, 'Manual edit', 'Product form');
+    `).run({ ...data, stock: data.stock, id: existing.id });
+    if (data.stock !== existing.stock) {
+      try {
+        db.prepare('INSERT INTO inventory_movements (product_id, change, stock_after, reason, reference) VALUES (?, ?, ?, ?, ?)')
+          .run(existing.id, data.stock - existing.stock, data.stock, 'Manual edit', 'Product form');
+      } catch {}
+    }
     return successResponse(res, 200, parseProduct(db.prepare('SELECT * FROM products WHERE id = ?').get(existing.id)), 'Product updated');
   } catch (error) {
     console.error(error);
@@ -372,6 +377,26 @@ exports.adjustInventory = (req, res) => {
     if (product.stock + change < 0) return errorResponse(res, 400, `Only ${product.stock} units in stock`);
     const stock = db.transaction(() => adjustStock(product.id, change, reason, `By ${req.user.name}`))();
     return successResponse(res, 200, { stock }, 'Stock updated');
+  } catch (error) {
+    console.error(error);
+    return errorResponse(res, 500, 'Server error');
+  }
+};
+
+exports.setInventoryStock = (req, res) => {
+  try {
+    const targetStock = Math.max(0, Math.round(Number(req.body.stock ?? 0)));
+    const product = db.prepare('SELECT id, name, stock FROM products WHERE id = ?').get(req.params.id);
+    if (!product) return errorResponse(res, 404, 'Product not found');
+    const change = targetStock - product.stock;
+    db.prepare('UPDATE products SET stock = ? WHERE id = ?').run(targetStock, product.id);
+    if (change !== 0) {
+      try {
+        db.prepare('INSERT INTO inventory_movements (product_id, change, stock_after, reason, reference) VALUES (?, ?, ?, ?, ?)')
+          .run(product.id, change, targetStock, change > 0 ? 'Restock' : 'Stock correction', `By ${req.user.name || 'Admin'}`);
+      } catch {}
+    }
+    return successResponse(res, 200, { stock: targetStock }, `${product.name} stock set to ${targetStock}`);
   } catch (error) {
     console.error(error);
     return errorResponse(res, 500, 'Server error');
