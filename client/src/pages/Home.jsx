@@ -8,6 +8,7 @@ import ProductCard from '../components/ui/ProductCard';
 import FeatureSpotlight from '../components/ui/FeatureSpotlight';
 import SEO from '../components/SEO';
 import ExperienceHero from '../components/ExperienceHero';
+import ScrollReveal from '../components/ui/ScrollReveal';
 import { CatalogContext, categoryPath } from '../context/CatalogContext';
 import { UIContext } from '../context/UIContext';
 import { getRecentlyViewed } from '../utils/storage';
@@ -128,127 +129,139 @@ const Home = () => {
       <ExperienceHero />
 
       {/* Shop by category */}
-      <section id="collections" className="container-x" aria-label="Shop by category">
-        <div className="mb-6 flex items-end justify-between">
-          <div>
-            <p className="eyebrow mb-2">Explore</p>
-            <h2 className="section-title eh-collection-title">Your next obsession.</h2>
+      <ScrollReveal variant="fade-up">
+        <section id="collections" className="container-x" aria-label="Shop by category">
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <p className="eyebrow mb-2">Explore</p>
+              <h2 className="section-title eh-collection-title">Your next obsession.</h2>
+            </div>
           </div>
-        </div>
-        <div className="hide-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 xl:mx-0 xl:grid xl:grid-cols-9 xl:overflow-visible xl:px-0">
-          {(categories.length ? categories : Array.from({ length: 9 }, (_, i) => ({ name: '', i }))).map((cat, i) => {
-            const cover = cat.subcategories?.[0];
-            return cat.name ? (
-              <Link key={cat.name} to={categoryPath(cat.name)} className="group w-32 shrink-0 snap-start text-center xl:w-auto">
-                <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-surface-2">
-                  {cover?.image && <img src={cover.image.replace('w=800', 'w=400')} alt={cat.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <span className="absolute inset-x-2 bottom-3 rounded-full bg-white/95 py-1 text-[11px] font-extrabold text-black">
-                    Up to {Math.max(...cat.subcategories.map(s => s.maxDiscount))}% off
-                  </span>
-                </div>
-                <p className="mt-3 text-sm font-extrabold group-hover:text-accent-text">{cat.name}</p>
-                <p className="text-xs text-muted">{cat.count} products</p>
-              </Link>
-            ) : <div key={i} className="skeleton aspect-[3/4] w-32 shrink-0 rounded-3xl xl:w-auto" />;
-          })}
-        </div>
-      </section>
+          <div className="hide-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 xl:mx-0 xl:grid xl:grid-cols-9 xl:overflow-visible xl:px-0">
+            {(categories.length ? categories : Array.from({ length: 9 }, (_, i) => ({ name: '', i }))).map((cat, i) => {
+              const cover = cat.subcategories?.[0];
+              return cat.name ? (
+                <Link key={cat.name} to={categoryPath(cat.name)} className="group w-32 shrink-0 snap-start text-center xl:w-auto">
+                  <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-surface-2">
+                    {cover?.image && <img src={cover.image.replace('w=800', 'w=400')} alt={cat.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <span className="absolute inset-x-2 bottom-3 rounded-full bg-white/95 py-1 text-[11px] font-extrabold text-black">
+                      Up to {Math.max(...cat.subcategories.map(s => s.maxDiscount))}% off
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm font-extrabold group-hover:text-accent-text">{cat.name}</p>
+                  <p className="text-xs text-muted">{cat.count} products</p>
+                </Link>
+              ) : <div key={i} className="skeleton aspect-[3/4] w-32 shrink-0 rounded-3xl xl:w-auto" />;
+            })}
+          </div>
+        </section>
+      </ScrollReveal>
 
       {/* Deal of the day */}
-      <section className="bg-ink py-12 text-on-ink md:py-16">
-        <div className="container-x">
-          <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="mb-2 inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-[0.2em]"><Zap size={14} /> Deal of the day</p>
-              <h2 className="font-display text-3xl font-semibold md:text-5xl">Biggest discounts, today only</h2>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-semibold opacity-80">Ends in</span>
-              <Countdown />
-            </div>
-          </div>
-          <div className="hide-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
-            {(loading.deals ? Array.from({ length: 6 }) : deals).map((p, i) => (
-              <div key={p?.id ?? i} className="w-[46%] shrink-0 snap-start rounded-3xl bg-surface p-2.5 text-fg sm:w-[31%] md:w-[23%] xl:w-[18.5%]">
-                {p ? <ProductCard product={p} /> : <div className="skeleton aspect-[3/4] rounded-2xl" />}
+      <ScrollReveal variant="fade-up">
+        <section className="bg-ink py-12 text-on-ink md:py-16">
+          <div className="container-x">
+            <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="mb-2 inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-[0.2em]"><Zap size={14} /> Deal of the day</p>
+                <h2 className="font-display text-3xl font-semibold md:text-5xl">Biggest discounts, today only</h2>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Trending with category tabs */}
-      <section className="container-x">
-        <ProductRail
-          eyebrow="Hot right now"
-          title="Trending now"
-          products={trending}
-          loading={loading.trending}
-          viewAllTo={trendingTab === 'All' ? '/products' : categoryPath(trendingTab)}
-          toolbar={
-            <div className="hide-scrollbar flex gap-2 overflow-x-auto" role="tablist" aria-label="Trending categories">
-              {TRENDING_TABS.map(tab => (
-                <button key={tab} role="tab" aria-selected={trendingTab === tab} onClick={() => setTrendingTab(tab)} className={`chip shrink-0 ${trendingTab === tab ? 'chip-active' : ''}`}>
-                  {tab}
-                </button>
-              ))}
-            </div>
-          }
-        />
-      </section>
-
-      {/* 21st UI Feature Spotlight Section */}
-      <FeatureSpotlight />
-
-      {/* Visual search promo */}
-      <section className="container-x">
-        <div className="relative overflow-hidden rounded-[2rem] border border-line bg-surface p-8 md:p-14">
-          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-accent/15 blur-3xl" aria-hidden="true" />
-          <div className="relative grid items-center gap-10 md:grid-cols-2">
-            <div>
-              <p className="eyebrow mb-3">New · Snap to shop</p>
-              <h2 className="section-title text-balance">Saw something you love? Just take a photo.</h2>
-              <p className="mt-4 max-w-lg text-muted">Point your camera at any phone, laptop, TV or appliance, or upload a picture from your gallery. ElectroHub recognises the product type and shows you similar models in seconds.</p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <button onClick={openVisualSearch} className="btn-primary"><Camera size={18} /> Try visual search</button>
-                <button onClick={openSearch} className="btn-outline"><Mic size={18} /> Search by voice</button>
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold opacity-80">Ends in</span>
+                <Countdown />
               </div>
-              <p className="mt-5 flex items-center gap-2 text-xs text-muted"><ShieldCheck size={15} className="text-success" /> Photos are analysed on your device and never uploaded.</p>
             </div>
-            <div className="relative mx-auto grid w-full max-w-sm grid-cols-2 gap-3" aria-hidden="true">
-              {popularSubs.slice(0, 4).map((s, i) => (
-                <div key={s.name} className={`overflow-hidden rounded-2xl bg-surface-2 ${i % 2 ? 'mt-8' : ''}`}>
-                  <img src={s.image.replace('w=800', 'w=400')} alt={s.name} loading="lazy" className="aspect-[3/4] w-full object-cover" />
+            <div className="hide-scrollbar -mx-4 flex snap-x gap-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+              {(loading.deals ? Array.from({ length: 6 }) : deals).map((p, i) => (
+                <div key={p?.id ?? i} className="w-[46%] shrink-0 snap-start rounded-3xl bg-surface p-2.5 text-fg sm:w-[31%] md:w-[23%] xl:w-[18.5%]">
+                  {p ? <ProductCard product={p} /> : <div className="skeleton aspect-[3/4] rounded-2xl" />}
                 </div>
               ))}
-              <div className="absolute left-1/2 top-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-accent text-on-accent shadow-float ring-8 ring-surface">
-                <ScanSearch size={34} />
+            </div>
+          </div>
+        </section>
+      </ScrollReveal>
+
+      {/* Trending with category tabs */}
+      <ScrollReveal variant="fade-up">
+        <section className="container-x">
+          <ProductRail
+            eyebrow="Hot right now"
+            title="Trending now"
+            products={trending}
+            loading={loading.trending}
+            viewAllTo={trendingTab === 'All' ? '/products' : categoryPath(trendingTab)}
+            toolbar={
+              <div className="hide-scrollbar flex gap-2 overflow-x-auto" role="tablist" aria-label="Trending categories">
+                {TRENDING_TABS.map(tab => (
+                  <button key={tab} role="tab" aria-selected={trendingTab === tab} onClick={() => setTrendingTab(tab)} className={`chip shrink-0 ${trendingTab === tab ? 'chip-active' : ''}`}>
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            }
+          />
+        </section>
+      </ScrollReveal>
+
+      {/* 21st UI Feature Spotlight Section */}
+      <ScrollReveal variant="scale-up">
+        <FeatureSpotlight />
+      </ScrollReveal>
+
+      {/* Visual search promo */}
+      <ScrollReveal variant="blur-in">
+        <section className="container-x">
+          <div className="relative overflow-hidden rounded-[2rem] border border-line bg-surface p-8 md:p-14">
+            <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-accent/15 blur-3xl" aria-hidden="true" />
+            <div className="relative grid items-center gap-10 md:grid-cols-2">
+              <div>
+                <p className="eyebrow mb-3">New · Snap to shop</p>
+                <h2 className="section-title text-balance">Saw something you love? Just take a photo.</h2>
+                <p className="mt-4 max-w-lg text-muted">Point your camera at any phone, laptop, TV or appliance, or upload a picture from your gallery. ElectroHub recognises the product type and shows you similar models in seconds.</p>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <button onClick={openVisualSearch} className="btn-primary"><Camera size={18} /> Try visual search</button>
+                  <button onClick={openSearch} className="btn-outline"><Mic size={18} /> Search by voice</button>
+                </div>
+                <p className="mt-5 flex items-center gap-2 text-xs text-muted"><ShieldCheck size={15} className="text-success" /> Photos are analysed on your device and never uploaded.</p>
+              </div>
+              <div className="relative mx-auto grid w-full max-w-sm grid-cols-2 gap-3" aria-hidden="true">
+                {popularSubs.slice(0, 4).map((s, i) => (
+                  <div key={s.name} className={`overflow-hidden rounded-2xl bg-surface-2 ${i % 2 ? 'mt-8' : ''}`}>
+                    <img src={s.image.replace('w=800', 'w=400')} alt={s.name} loading="lazy" className="aspect-[3/4] w-full object-cover" />
+                  </div>
+                ))}
+                <div className="absolute left-1/2 top-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-accent text-on-accent shadow-float ring-8 ring-surface">
+                  <ScanSearch size={34} />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </ScrollReveal>
 
       {/* Popular subcategories */}
       {popularSubs.length > 0 && (
-        <section className="container-x">
-          <p className="eyebrow mb-2">Most loved</p>
-          <h2 className="section-title mb-6">Shop by type</h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-            {popularSubs.map((s, i) => (
-              <Link key={s.category + s.name} to={categoryPath(s.category, s.name)} className={`group relative overflow-hidden rounded-3xl bg-surface-2 ${i === 0 || i === 5 ? 'md:row-span-2' : ''}`}>
-                <img src={s.image.replace('w=800', 'w=600')} alt={s.name} loading="lazy" className={`w-full object-cover transition duration-700 group-hover:scale-105 ${i === 0 || i === 5 ? 'aspect-[3/4] h-full' : 'aspect-[4/3]'}`} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
-                <div className="absolute inset-x-4 bottom-4 text-white">
-                  <p className="text-xs font-bold uppercase tracking-widest text-white/85">{s.category}</p>
-                  <p className="text-lg font-extrabold">{s.name}</p>
-                  <p className="text-sm font-semibold">Up to {s.maxDiscount}% off</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <ScrollReveal variant="fade-up">
+          <section className="container-x">
+            <p className="eyebrow mb-2">Most loved</p>
+            <h2 className="section-title mb-6">Shop by type</h2>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+              {popularSubs.map((s, i) => (
+                <Link key={s.category + s.name} to={categoryPath(s.category, s.name)} className={`group relative overflow-hidden rounded-3xl bg-surface-2 ${i === 0 || i === 5 ? 'md:row-span-2' : ''}`}>
+                  <img src={s.image.replace('w=800', 'w=600')} alt={s.name} loading="lazy" className={`w-full object-cover transition duration-700 group-hover:scale-105 ${i === 0 || i === 5 ? 'aspect-[3/4] h-full' : 'aspect-[4/3]'}`} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+                  <div className="absolute inset-x-4 bottom-4 text-white">
+                    <p className="text-xs font-bold uppercase tracking-widest text-white/85">{s.category}</p>
+                    <p className="text-lg font-extrabold">{s.name}</p>
+                    <p className="text-sm font-semibold">Up to {s.maxDiscount}% off</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </ScrollReveal>
       )}
 
       {/* Brands strip */}
@@ -262,18 +275,24 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="container-x">
-        <ProductRail eyebrow="Just in" title="New arrivals" products={newArrivals} loading={loading.newArrivals} viewAllTo="/products?sort=newest" />
-      </section>
+      <ScrollReveal variant="fade-up">
+        <section className="container-x">
+          <ProductRail eyebrow="Just in" title="New arrivals" products={newArrivals} loading={loading.newArrivals} viewAllTo="/products?sort=newest" />
+        </section>
+      </ScrollReveal>
 
-      <section className="container-x">
-        <ProductRail eyebrow="Customer favourites" title="Top rated" products={topRated} loading={loading.topRated} viewAllTo="/products?sort=rating" />
-      </section>
+      <ScrollReveal variant="fade-up">
+        <section className="container-x">
+          <ProductRail eyebrow="Customer favourites" title="Top rated" products={topRated} loading={loading.topRated} viewAllTo="/products?sort=rating" />
+        </section>
+      </ScrollReveal>
 
       {recent.length > 0 && (
-        <section className="container-x">
-          <ProductRail eyebrow="Pick up where you left off" title="Recently viewed" products={recent} />
-        </section>
+        <ScrollReveal variant="fade-up">
+          <section className="container-x">
+            <ProductRail eyebrow="Pick up where you left off" title="Recently viewed" products={recent} />
+          </section>
+        </ScrollReveal>
       )}
     </div>
   );

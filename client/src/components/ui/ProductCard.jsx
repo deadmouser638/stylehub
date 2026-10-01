@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Heart, Eye } from 'lucide-react';
 import { RatingPill } from './RatingStars';
 import Price from './Price';
+import TiltCard from './TiltCard';
 import { WishlistContext } from '../../context/WishlistContext';
 import { AuthContext } from '../../context/AuthContext';
 import { UIContext } from '../../context/UIContext';
@@ -31,7 +32,7 @@ const ProductCard = ({ product, className = '' }) => {
   };
 
   return (
-    <article className={`group relative flex flex-col hover-lift transition-all duration-300 ${className}`}>
+    <TiltCard rotationFactor={7} scale={1.02} className={`group relative flex flex-col ${className}`}>
       <div className="relative overflow-hidden rounded-2xl bg-surface-2">
         <Link to={`/product/${product.id}`} className="block aspect-[3/4]" aria-label={`${product.brand} ${title}`}>
           {!imgLoaded && <div className="skeleton absolute inset-0" aria-hidden="true" />}
@@ -91,7 +92,7 @@ const ProductCard = ({ product, className = '' }) => {
         {keySpecs(product).length > 0 && <p className="mb-1.5 mt-0.5 truncate text-xs font-semibold text-muted">{keySpecs(product).join(' · ')}</p>}
         <Price product={product} className="mt-auto" />
       </Link>
-    </article>
+    </TiltCard>
   );
 };
 

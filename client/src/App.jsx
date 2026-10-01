@@ -29,6 +29,7 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCoupons from './pages/admin/AdminCoupons';
 import AdminOffers from './pages/admin/AdminOffers';
+import ScrollProgress from './components/ui/ScrollProgress';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -47,6 +48,7 @@ function App() {
             <CatalogProvider>
               <Router>
                 <UIProvider>
+                  <ScrollProgress />
                   <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-on-ink">Skip to content</a>
                   <div className="flex min-h-screen flex-col">
                     <Toaster
