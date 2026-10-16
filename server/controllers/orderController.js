@@ -178,12 +178,13 @@ exports.cancelOrder = (req, res) => {
 };
 
 exports.trackOrder = (req, res) => {
-  const { orderId, email, token } = req.query;
+  const { orderId, token } = req.query;
 
   // If an encrypted token is provided, verify and decrypt it statelessly
   if (token) {
     const verified = decryptData(token);
     if (verified) return successResponse(res, 200, verified);
+    return errorResponse(res, 404, 'Invalid or expired demo tracking link');
   }
 
   // Otherwise check current session's orders
@@ -191,26 +192,5 @@ exports.trackOrder = (req, res) => {
   const order = (session.demoOrders || []).find(o => String(o.id) === String(orderId));
   if (order) return successResponse(res, 200, order);
 
-  // Provide realistic simulated courier tracking response for any demo lookup
-  if (orderId) {
-    const demoNumeric = parseInt(orderId, 10) || 12345;
-    return successResponse(res, 200, {
-      id: orderId,
-      total_amount: 14999,
-      payment_method: 'Demo UPI',
-      status: 'Shipped',
-      city: 'Demo City',
-      pincode: '400001',
-      courier: 'BlueDart Express (Demo)',
-      tracking_number: `BD-DEMO-${demoNumeric}`,
-      history: [
-        { status: 'Placed', note: 'Demo order placed', created_at: new Date(Date.now() - 86400000 * 2).toISOString() },
-        { status: 'Confirmed', note: 'Demo order confirmed', created_at: new Date(Date.now() - 86400000 * 1.8).toISOString() },
-        { status: 'Packed', note: 'Packed at Mumbai demo facility', created_at: new Date(Date.now() - 86400000).toISOString() },
-        { status: 'Shipped', note: 'In transit to destination hub', created_at: new Date().toISOString() }
-      ]
-    });
-  }
-
-  return errorResponse(res, 404, 'Please provide an order number to track');
+  return errorResponse(res, 404, 'Demo order not found in this browser session. Use the 24-hour tracking link from your confirmation.');
 };

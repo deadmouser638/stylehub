@@ -178,7 +178,7 @@ const AdminOrders = () => {
         <div className="flex items-center gap-3">
           <h2 className="font-display text-2xl font-semibold">Orders {data && <span className="font-sans text-base text-muted">({data.orders.length})</span>}</h2>
           <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-muted">
-            Session Preview · In-Memory Only
+            Read-only demo
           </span>
         </div>
         <span className="text-xs text-muted">Click any order to view details or use the quick status buttons</span>

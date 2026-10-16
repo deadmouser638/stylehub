@@ -99,7 +99,7 @@ const AdminInventory = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-2xl font-semibold">Inventory</h2>
         <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-muted">
-          Session Preview · In-Memory Only
+          Read-only demo
         </span>
       </div>
 

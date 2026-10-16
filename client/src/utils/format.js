@@ -4,8 +4,12 @@ export const formatPrice = (value) => `₹${inr.format(Math.round(Number(value) 
 
 export const sellingPrice = (product) => product.price - (product.price * product.discount_percent / 100);
 
-// SQLite CURRENT_TIMESTAMP is UTC without a zone marker
-export const parseDbDate = (value) => new Date(String(value).replace(' ', 'T') + 'Z');
+// Support UTC timestamps from both the legacy SQLite seed and ISO API responses.
+export const parseDbDate = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return new Date(NaN);
+  return new Date(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(text) ? `${text.replace(' ', 'T')}Z` : text);
+};
 
 export const formatDate = (value, opts = { day: 'numeric', month: 'short', year: 'numeric' }) =>
   parseDbDate(value).toLocaleDateString('en-IN', opts);

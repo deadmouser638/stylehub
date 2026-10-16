@@ -77,7 +77,7 @@ const AdminCoupons = () => {
         <div className="flex items-center gap-3">
           <h2 className="font-display text-2xl font-semibold">Coupons</h2>
           <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-muted">
-            Session Preview · In-Memory Only
+            Read-only demo
           </span>
         </div>
         <button onClick={() => setEditing('new')} className="btn-primary py-2.5"><Plus size={18} /> Add coupon</button>

@@ -90,6 +90,13 @@ async function runTests() {
 
   const adminForbidden = await request('GET', '/api/admin/stats', null, { Authorization: `Bearer ${custToken}` });
   assert('Customer token denied admin access (403)', adminForbidden.status === 403);
+  if (process.env.DEMO_ADMIN_EMAIL && process.env.DEMO_ADMIN_PASSWORD) {
+    const adminLogin = await request('POST', '/api/auth/login', { email: process.env.DEMO_ADMIN_EMAIL, password: process.env.DEMO_ADMIN_PASSWORD });
+    const adminToken = adminLogin.data?.data?.token;
+    assert('Configured admin can view dashboard', Boolean(adminToken) && (await request('GET', '/api/admin/stats', null, { Authorization: `Bearer ${adminToken}` })).status === 200);
+    const deniedEdit = await request('POST', '/api/admin/products', { name: 'Unstored demo product' }, { Authorization: `Bearer ${adminToken}` });
+    assert('Admin write is explicitly read-only', deniedEdit.status === 405);
+  }
 
   // 4. Cart Server Validation & Signed Cookie
   const cartAdd = await request('POST', '/api/cart', { productId: 1, quantity: 2 });
@@ -122,6 +129,10 @@ async function runTests() {
   const orderToken = orderRes.data?.data?.demoOrderToken;
   const trackRes = await request('GET', `/api/orders/track?token=${orderToken}`);
   assert('Tracking endpoint verifies encrypted demo order token statelessly', trackRes.status === 200 && trackRes.data?.data?.is_demo === true);
+  const invalidTrack = await request('GET', '/api/orders/track?token=invalid');
+  assert('Invalid tracking token fails closed', invalidTrack.status === 404);
+  const unknownOrder = await request('GET', '/api/orders/track?orderId=999999');
+  assert('Unknown order number cannot fabricate a shipment', unknownOrder.status === 404);
 
   // 6. Cookie Confidentiality and Size Checks
   const orderCookie = orderRes.headers['set-cookie'] ? orderRes.headers['set-cookie'][0] : '';

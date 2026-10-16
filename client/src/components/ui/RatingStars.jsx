@@ -3,11 +3,10 @@ import { Star } from 'lucide-react';
 
 // Compact rating pill, e.g. "4.3 ★ | 352"
 export const RatingPill = ({ rating, count, className = '' }) => (
-  <span className={`inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-0.5 text-xs font-bold text-fg backdrop-blur ${className}`}>
-    {Number(rating).toFixed(1)}
-    <Star size={11} className="fill-star text-star" aria-hidden="true" />
-    {count !== undefined && <span className="border-l border-line-strong pl-1 font-semibold text-muted">{Number(count) >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}</span>}
-    <span className="sr-only"> out of 5 stars{count !== undefined ? ` from ${count} ratings` : ''}</span>
+  <span role="img" aria-label={Number(count) === 0 ? 'No demo reviews yet' : `${Number(rating).toFixed(1)} out of 5 stars${count !== undefined ? ` from ${count} demo reviews` : ''}`} className={`inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-0.5 text-xs font-bold text-fg backdrop-blur ${className}`}>
+    <span aria-hidden="true">{Number(count) === 0 ? 'No reviews yet' : Number(rating).toFixed(1)}</span>
+    {Number(count) !== 0 && <Star size={11} className="fill-star text-star" aria-hidden="true" />}
+    {count !== undefined && Number(count) > 0 && <span aria-hidden="true" className="border-l border-line-strong pl-1 font-semibold text-muted">{Number(count) >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}</span>}
   </span>
 );
 

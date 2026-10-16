@@ -4,6 +4,14 @@ const { protect, adminOnly } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(protect, adminOnly);
+// Catalog data is bundled with each serverless instance. Do not accept edits that
+// could appear to succeed on one instance and vanish on the next request.
+router.use((req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return res.status(405).json({ success: false, message: 'Admin editing is unavailable in this database-free demo. Update the source catalog and redeploy.' });
+  }
+  next();
+});
 
 router.get('/stats', admin.getStats);
 

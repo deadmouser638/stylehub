@@ -40,7 +40,7 @@ const AdminLayout = () => {
       </div>
 
       <div className="mb-6 rounded-2xl border border-line bg-surface-2 p-4 text-xs text-muted leading-relaxed">
-        <strong className="text-fg">Stateless Demo Notice:</strong> ElectroHub operates on a database-free serverless architecture. Changes made in this control panel (stock updates, catalog edits, offers, coupons) apply to current in-memory instance state and will not persist across deployments or serverless cold starts.
+        <strong className="text-fg">Read-only demo:</strong> This dashboard displays source-backed sample data. Editing controls are disabled because serverless instance memory cannot reliably preserve changes. Update the backend data files and redeploy to change the catalog.
       </div>
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
         <nav className="hide-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-1 lg:px-0" aria-label="Admin sections">
@@ -50,7 +50,7 @@ const AdminLayout = () => {
             </NavLink>
           ))}
         </nav>
-        <div className="min-w-0"><Outlet /></div>
+        <fieldset disabled className="min-w-0" aria-label="Read-only admin demo"><Outlet /></fieldset>
       </div>
     </div>
   );

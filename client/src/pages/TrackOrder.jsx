@@ -1,8 +1,7 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PackageSearch, Package, PackageCheck, Truck, CircleCheck, CircleX, LoaderCircle, ShieldAlert } from 'lucide-react';
 import api from '../utils/api';
-import { AuthContext } from '../context/AuthContext';
 import { formatPrice, parseDbDate } from '../utils/format';
 
 const STEPS = [
@@ -14,11 +13,9 @@ const STEPS = [
 ];
 
 const TrackOrder = () => {
-  const { user } = useContext(AuthContext);
   const [searchParams] = useSearchParams();
   const tokenFromUrl = searchParams.get('token');
   const [orderId, setOrderId] = useState(searchParams.get('orderId') || '');
-  const [email, setEmail] = useState(user?.email || '');
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +36,7 @@ const TrackOrder = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get('/orders/track', { params: { orderId, email } });
+      const res = await api.get('/orders/track', { params: { orderId } });
       setOrder(res.data.data);
     } catch (err) {
       setOrder(null);
@@ -55,7 +52,7 @@ const TrackOrder = () => {
     <div className="container-x max-w-3xl py-8 md:py-12">
       <p className="eyebrow">Order tracking</p>
       <h1 className="mt-2 font-display text-3xl font-semibold md:text-4xl">Track your order</h1>
-      <p className="mt-2 text-muted">Enter your order number and the email you used at checkout, or view via tracking link.</p>
+      <p className="mt-2 text-muted">Enter an order number from this browser session, or use your 24-hour demo tracking link.</p>
 
       {tokenFromUrl && (
         <div className="mt-4 flex items-start gap-3 rounded-2xl border border-line bg-surface-2 p-3.5 text-xs text-muted">
@@ -66,14 +63,10 @@ const TrackOrder = () => {
         </div>
       )}
 
-      <form onSubmit={track} className="card mt-6 grid gap-3 p-4 sm:grid-cols-[1fr_1.4fr_auto] sm:items-end">
+      <form onSubmit={track} className="card mt-6 flex flex-wrap items-end gap-3 p-4">
         <label className="block">
           <span className="label">Order number</span>
           <input required inputMode="numeric" value={orderId} onChange={e => setOrderId(e.target.value)} placeholder="e.g. 12" className="input" />
-        </label>
-        <label className="block">
-          <span className="label">Email</span>
-          <input required type="email" value={email} onChange={e => setEmail(e.target.value)} className="input" />
         </label>
         <button type="submit" disabled={loading} className="btn-primary">{loading ? <LoaderCircle size={18} className="animate-spin" /> : <PackageSearch size={18} />} Track</button>
       </form>
@@ -142,7 +135,7 @@ const TrackOrder = () => {
               ))}
             </ul>
           )}
-          {user && <Link to="/orders" className="link mt-4 inline-block text-sm">See all my orders</Link>}
+          <Link to="/orders" className="link mt-4 inline-block text-sm">See demo orders in this session</Link>
         </section>
       )}
     </div>

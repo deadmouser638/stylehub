@@ -44,7 +44,7 @@ exports.getStats = (req, res) => {
         { id: 982140, total_amount: 1499, status: 'Delivered', payment_method: 'Demo COD', customer: 'Priya Sharma', created_at: new Date(Date.now() - 7200000).toISOString() }
       ],
       lowStockProducts: lowStock.slice(0, 8),
-      disclaimer: 'Admin Demo Mode: Edits are held in serverless instance memory and will not persist across deployments or cold restarts.'
+      disclaimer: 'Read-only demo. Update the backend source data and redeploy to change the catalog.'
     });
   } catch (error) {
     return errorResponse(res, 500, 'Server error');
