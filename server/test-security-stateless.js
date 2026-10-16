@@ -121,7 +121,18 @@ async function runTests() {
 
   const orderToken = orderRes.data?.data?.demoOrderToken;
   const trackRes = await request('GET', `/api/orders/track?token=${orderToken}`);
-  assert('Tracking endpoint verifies signed demo order token statelessly', trackRes.status === 200 && trackRes.data?.data?.is_demo === true);
+  assert('Tracking endpoint verifies encrypted demo order token statelessly', trackRes.status === 200 && trackRes.data?.data?.is_demo === true);
+
+  // 6. Cookie Confidentiality and Size Checks
+  const orderCookie = orderRes.headers['set-cookie'] ? orderRes.headers['set-cookie'][0] : '';
+  assert('Cookie size is well within 4KB browser limit (< 1.5KB)', orderCookie.length < 1500);
+  assert('Cookie content is encrypted (does not leak plain address or email)', !orderCookie.includes('Demo Street') && !orderCookie.includes('Smoke Test'));
+
+  // 7. CSRF Defense Checks
+  const crossSitePost = await request('POST', '/api/cart', { productId: 1, quantity: 1 }, {
+    'Sec-Fetch-Site': 'cross-site'
+  });
+  assert('Cross-site state-changing request blocked with 403', crossSitePost.status === 403);
 
   console.log(`\nTests Completed: ${passed}/${total} passed.`);
 }

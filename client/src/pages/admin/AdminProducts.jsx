@@ -136,7 +136,10 @@ const AdminProducts = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-semibold">Products {data && <span className="font-sans text-base text-muted">({data.pagination.total})</span>}</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="font-display text-2xl font-semibold">Products {data && <span className="font-sans text-base text-muted">({data.pagination.total})</span>}</h2>
+          <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-muted">Session Preview</span>
+        </div>
         <button onClick={() => setEditing('new')} className="btn-primary py-2.5"><Plus size={18} /> Add product</button>
       </div>
 

@@ -47,6 +47,33 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json({ limit: '64kb', strict: true }));
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
+
+// CSRF Defense for cookie-authenticated state-changing routes:
+// Rejects cross-origin state changes (POST, PUT, DELETE, PATCH) if origin or sec-fetch-site is cross-site
+app.use((req, res, next) => {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    const secFetchSite = req.headers['sec-fetch-site'];
+    if (secFetchSite && secFetchSite === 'cross-site') {
+      return res.status(403).json({ success: false, message: 'Cross-site request blocked' });
+    }
+    const origin = req.headers['origin'];
+    const host = req.headers['host'];
+    if (origin && host) {
+      try {
+        const originHost = new URL(origin).host;
+        const isSelf = originHost === host;
+        const isAllowed = allowedOrigins.some(o => {
+          try { return new URL(o).host === originHost; } catch { return false; }
+        });
+        if (!isSelf && !isAllowed && allowedOrigins.length > 0) {
+          return res.status(403).json({ success: false, message: 'Forbidden origin' });
+        }
+      } catch {}
+    }
+  }
+  next();
+});
+
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
 
 // Cache-Control headers ensuring real-time fresh data

@@ -2,7 +2,7 @@ const dataStore = require('../dataStore');
 const { successResponse, errorResponse } = require('../utils/response');
 const { evaluateCoupon, getDeliveryFee } = require('../utils/pricing');
 const { cleanText } = require('../utils/validate');
-const { getSessionData, setSessionCookie, signData, verifyData } = require('../config/session');
+const { getSessionData, setSessionCookie, encryptData, decryptData } = require('../config/session');
 
 const PAYMENT_METHODS = ['UPI', 'Card', 'COD'];
 
@@ -111,13 +111,24 @@ exports.createOrder = (req, res) => {
     ]
   };
 
-  // Sign demo order token for tamper-proof stateless tracking and confirmation
-  const demoOrderToken = signData(orderRecord);
+  // Encrypt demo order token (AES-256-GCM + timestamp expiry) to ensure confidentiality in URLs
+  const demoOrderToken = encryptData({
+    id: orderId,
+    total_amount: finalAmount,
+    payment_method,
+    status: orderStatus,
+    city: validatedAddress.city,
+    pincode: validatedAddress.pincode,
+    courier: 'BlueDart Express (Demo)',
+    tracking_number: `BD-DEMO-${orderId}`,
+    is_demo: true,
+    created_at: createdAt
+  });
 
   // Update session: clear cart, store placed order and address
   session.cart = [];
   session.addresses = [validatedAddress];
-  session.demoOrders = [orderRecord, ...(session.demoOrders || []).filter(o => o.id !== orderId)].slice(0, 5);
+  session.demoOrders = [orderRecord, ...(session.demoOrders || []).filter(o => o.id !== orderId)].slice(0, 3);
   setSessionCookie(res, session);
 
   const response = {
@@ -164,9 +175,9 @@ exports.cancelOrder = (req, res) => {
 exports.trackOrder = (req, res) => {
   const { orderId, email, token } = req.query;
 
-  // If a signed token is provided, verify it directly statelessly
+  // If an encrypted token is provided, verify and decrypt it statelessly
   if (token) {
-    const verified = verifyData(token);
+    const verified = decryptData(token);
     if (verified) return successResponse(res, 200, verified);
   }
 

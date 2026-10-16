@@ -96,7 +96,12 @@ const AdminInventory = () => {
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-2xl font-semibold">Inventory</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display text-2xl font-semibold">Inventory</h2>
+        <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-muted">
+          Session Preview · In-Memory Only
+        </span>
+      </div>
 
       {summary && (
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
