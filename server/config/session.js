@@ -18,8 +18,11 @@ const verifyData = (token) => {
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const [payload, sig] = parts;
-  const expectedSig = crypto.createHmac('sha256', JWT_SECRET).update(payload).digest('base64url');
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) return null;
+  const sigBuf = Buffer.from(sig);
+  const expectedSigBuf = Buffer.from(crypto.createHmac('sha256', JWT_SECRET).update(payload).digest('base64url'));
+  if (sigBuf.length !== expectedSigBuf.length || !crypto.timingSafeEqual(sigBuf, expectedSigBuf)) {
+    return null;
+  }
   try {
     return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
   } catch {

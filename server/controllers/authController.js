@@ -81,15 +81,8 @@ exports.login = async (req, res) => {
     return errorResponse(res, 401, 'Invalid password for demo user (use Demo@123)');
   }
 
-  // For any other customer login in this demo storefront, issue a clean demo session
-  const user = {
-    id: Math.floor(1000 + Math.random() * 9000),
-    name: email.split('@')[0],
-    email,
-    role: 'customer'
-  };
-  const token = signToken({ id: user.id, email: user.email, name: user.name, role: 'customer' });
-  return successResponse(res, 200, { user, token }, 'Logged in to demo session');
+  // Without a persistent user database, unseeded external accounts cannot be verified against historical records
+  return errorResponse(res, 401, 'Account not recognized. Use the demo account (demo@electrohub.com / Demo@123) or create a demo session.');
 };
 
 exports.getMe = (req, res) => {
