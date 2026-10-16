@@ -200,7 +200,16 @@ const Checkout = () => {
             </div>
           )}
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <button onClick={() => navigate('/orders')} className={retryCard ? 'btn-outline' : 'btn-primary'}>View my orders</button>
+            {placed.demoOrderToken ? (
+              <Link to={`/track?token=${encodeURIComponent(placed.demoOrderToken)}`} className="btn-primary">
+                Track simulated order
+              </Link>
+            ) : (
+              <Link to="/track" className="btn-primary">
+                Track simulated order
+              </Link>
+            )}
+            <button onClick={() => navigate('/orders')} className="btn-outline">View my orders</button>
             <Link to="/products" className="btn-outline">Continue shopping</Link>
           </div>
         </div>

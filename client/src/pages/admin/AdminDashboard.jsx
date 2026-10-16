@@ -27,6 +27,12 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-2xl font-semibold">Dashboard Overview</h2>
+        <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-muted">
+          Session Preview · In-Memory Only
+        </span>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat icon={IndianRupee} label="Revenue" value={formatPrice(stats.revenue)} to="/admin/orders" />
         <Stat icon={ShoppingBag} label="Open orders" value={`${stats.pendingOrders} / ${stats.orders}`} to="/admin/orders" />

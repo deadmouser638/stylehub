@@ -111,18 +111,23 @@ exports.createOrder = (req, res) => {
     ]
   };
 
-  // Encrypt demo order token (AES-256-GCM + timestamp expiry) to ensure confidentiality in URLs
+  // Encrypt demo order token (AES-256-GCM + 24h expiry). Bearer credential in URLs:
+  // Note: An encrypted token in a URL is still a bearer credential that grants access to anyone who receives it.
+  // We minimize details to only operational courier delivery tracking (status, courier, tracking number, city, pincode)
+  // and omit personal names, street addresses, items, and billing totals.
   const demoOrderToken = encryptData({
     id: orderId,
-    total_amount: finalAmount,
-    payment_method,
     status: orderStatus,
     city: validatedAddress.city,
     pincode: validatedAddress.pincode,
     courier: 'BlueDart Express (Demo)',
     tracking_number: `BD-DEMO-${orderId}`,
     is_demo: true,
-    created_at: createdAt
+    created_at: createdAt,
+    history: [
+      { status: 'Placed', note: `Simulated order placed (${payment_method})`, created_at: createdAt },
+      { status: 'Confirmed', note: 'Demo order confirmed', created_at: createdAt }
+    ]
   });
 
   // Update session: clear cart, store placed order and address

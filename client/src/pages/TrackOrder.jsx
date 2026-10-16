@@ -1,6 +1,6 @@
-import React, { useContext, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { PackageSearch, Package, PackageCheck, Truck, CircleCheck, CircleX, LoaderCircle } from 'lucide-react';
+import React, { useContext, useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { PackageSearch, Package, PackageCheck, Truck, CircleCheck, CircleX, LoaderCircle, ShieldAlert } from 'lucide-react';
 import api from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { formatPrice, parseDbDate } from '../utils/format';
@@ -15,11 +15,24 @@ const STEPS = [
 
 const TrackOrder = () => {
   const { user } = useContext(AuthContext);
-  const [orderId, setOrderId] = useState('');
+  const [searchParams] = useSearchParams();
+  const tokenFromUrl = searchParams.get('token');
+  const [orderId, setOrderId] = useState(searchParams.get('orderId') || '');
   const [email, setEmail] = useState(user?.email || '');
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (tokenFromUrl) {
+      setLoading(true);
+      setError('');
+      api.get('/orders/track', { params: { token: tokenFromUrl } })
+        .then(res => setOrder(res.data.data))
+        .catch(err => setError(err.response?.data?.message || 'Invalid or expired tracking token'))
+        .finally(() => setLoading(false));
+    }
+  }, [tokenFromUrl]);
 
   const track = async (e) => {
     e.preventDefault();
@@ -42,7 +55,16 @@ const TrackOrder = () => {
     <div className="container-x max-w-3xl py-8 md:py-12">
       <p className="eyebrow">Order tracking</p>
       <h1 className="mt-2 font-display text-3xl font-semibold md:text-4xl">Track your order</h1>
-      <p className="mt-2 text-muted">Enter your order number and the email you used at checkout.</p>
+      <p className="mt-2 text-muted">Enter your order number and the email you used at checkout, or view via tracking link.</p>
+
+      {tokenFromUrl && (
+        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-line bg-surface-2 p-3.5 text-xs text-muted">
+          <ShieldAlert size={16} className="mt-0.5 shrink-0 text-accent-text" />
+          <div>
+            <strong className="text-fg">Tracking Link Access:</strong> This link contains a secure 24-hour tracking token. Note that encrypted tracking links in URLs act as bearer tokens—anyone with the link can view these simulated delivery status updates until expiration.
+          </div>
+        </div>
+      )}
 
       <form onSubmit={track} className="card mt-6 grid gap-3 p-4 sm:grid-cols-[1fr_1.4fr_auto] sm:items-end">
         <label className="block">
@@ -61,9 +83,13 @@ const TrackOrder = () => {
         <section className="card mt-6 p-5 animate-slide-up sm:p-6" aria-live="polite">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm text-muted">Order #{order.id} · {formatPrice(order.total_amount)} · {order.payment_method}</p>
+              <p className="text-sm text-muted">
+                Order #{order.id}
+                {order.total_amount ? ` · ${formatPrice(order.total_amount)}` : ''}
+                {order.payment_method ? ` · ${order.payment_method}` : ''}
+              </p>
               <p className="font-display text-2xl font-semibold">{order.status === 'Pending' ? 'Order placed' : order.status}</p>
-              <p className="text-sm text-muted">Delivering to {order.city} {order.pincode}</p>
+              {order.city && <p className="text-sm text-muted">Delivering to {order.city} {order.pincode}</p>}
             </div>
             {order.tracking_number && (
               <div className="rounded-2xl bg-surface-2 px-4 py-2 text-sm">
@@ -89,27 +115,33 @@ const TrackOrder = () => {
             </ol>
           )}
 
-          <h2 className="mt-8 text-sm font-extrabold uppercase tracking-wider">Updates</h2>
-          <ol className="mt-3 space-y-4 border-l-2 border-line-strong pl-5">
-            {[...order.history].reverse().map((h, i) => (
-              <li key={i} className="relative">
-                <span className={`absolute -left-[27px] top-1 h-3 w-3 rounded-full ${i === 0 ? 'bg-accent' : 'bg-line-strong'}`} aria-hidden="true" />
-                <p className="font-bold">{h.status}</p>
-                {h.note && <p className="text-sm text-muted">{h.note}</p>}
-                <p className="text-xs text-muted">{parseDbDate(h.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
-              </li>
-            ))}
-          </ol>
+          {Array.isArray(order.history) && order.history.length > 0 && (
+            <>
+              <h2 className="mt-8 text-sm font-extrabold uppercase tracking-wider">Updates</h2>
+              <ol className="mt-3 space-y-4 border-l-2 border-line-strong pl-5">
+                {[...order.history].reverse().map((h, i) => (
+                  <li key={i} className="relative">
+                    <span className={`absolute -left-[27px] top-1 h-3 w-3 rounded-full ${i === 0 ? 'bg-accent' : 'bg-line-strong'}`} aria-hidden="true" />
+                    <p className="font-bold">{h.status}</p>
+                    {h.note && <p className="text-sm text-muted">{h.note}</p>}
+                    <p className="text-xs text-muted">{parseDbDate(h.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
 
-          <ul className="mt-6 divide-y divide-line border-t border-line">
-            {order.items.map((item, i) => (
-              <li key={i} className="flex items-center gap-3 py-3 text-sm">
-                {item.image && <img src={item.image.replace('w=800', 'w=120')} alt="" className="h-12 w-12 rounded-lg object-cover" />}
-                <span className="min-w-0 flex-1 truncate font-semibold">{item.name}</span>
-                <span className="text-muted">×{item.quantity}</span>
-              </li>
-            ))}
-          </ul>
+          {Array.isArray(order.items) && order.items.length > 0 && (
+            <ul className="mt-6 divide-y divide-line border-t border-line">
+              {order.items.map((item, i) => (
+                <li key={i} className="flex items-center gap-3 py-3 text-sm">
+                  {item.image && <img src={item.image.replace('w=800', 'w=120')} alt="" className="h-12 w-12 rounded-lg object-cover" />}
+                  <span className="min-w-0 flex-1 truncate font-semibold">{item.name}</span>
+                  <span className="text-muted">×{item.quantity}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           {user && <Link to="/orders" className="link mt-4 inline-block text-sm">See all my orders</Link>}
         </section>
       )}

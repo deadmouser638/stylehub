@@ -74,7 +74,12 @@ const AdminCoupons = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-2xl font-semibold">Coupons</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="font-display text-2xl font-semibold">Coupons</h2>
+          <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-bold text-muted">
+            Session Preview · In-Memory Only
+          </span>
+        </div>
         <button onClick={() => setEditing('new')} className="btn-primary py-2.5"><Plus size={18} /> Add coupon</button>
       </div>
       {!coupons ? <Spinner className="min-h-[30vh]" /> : (
