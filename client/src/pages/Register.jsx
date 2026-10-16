@@ -8,8 +8,8 @@ import api from '../utils/api';
 
 const passwordStrength = (pw) => {
   let score = 0;
-  if (pw.length >= 6) score++;
-  if (pw.length >= 10) score++;
+  if (pw.length >= 12) score++;
+  if (pw.length >= 16) score++;
   if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
   if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) score++;
   return score;
@@ -35,7 +35,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.password.length < 6) return toast.error('Password must be at least 6 characters');
+    if (formData.password.length < 12) return toast.error('Password must be at least 12 characters');
     setSubmitting(true);
     try {
       const res = await api.post('/auth/register', formData);
@@ -71,7 +71,7 @@ const Register = () => {
         <div>
           <label htmlFor="reg-password" className="label">Password</label>
           <div className="relative">
-            <input id="reg-password" type={showPassword ? 'text' : 'password'} name="password" required minLength={6} autoComplete="new-password" className="input pr-12" value={formData.password} onChange={handleChange} aria-describedby="password-strength" />
+            <input id="reg-password" type={showPassword ? 'text' : 'password'} name="password" required minLength={12} maxLength={128} autoComplete="new-password" className="input pr-12" value={formData.password} onChange={handleChange} aria-describedby="password-strength" />
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 grid w-12 place-items-center text-muted hover:text-fg" aria-label={showPassword ? 'Hide password' : 'Show password'}>
               {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
             </button>

@@ -12,26 +12,26 @@ const FEATURES = [
   {
     icon: Zap,
     badge: 'Express Shipping',
-    title: 'Superfast 2-Day Delivery',
-    description: 'Free expedited delivery on all orders over ₹499 with live step-by-step courier tracking.',
+    title: 'Demo Delivery Preview',
+    description: 'See an estimated 3–5 business day delivery window. Orders are simulated and no products ship.',
   },
   {
     icon: ShieldCheck,
     badge: '100% Genuine',
-    title: 'Brand Warranty Included',
-    description: 'Directly sourced from authorized brand distributors with official manufacturer warranty coverage.',
+    title: 'Product Details to Explore',
+    description: 'Explore sample specifications and warranty information. Verify all details before using a real store.',
   },
   {
     icon: RefreshCw,
     badge: 'Hassle Free',
-    title: '30-Day Easy Returns',
-    description: 'No questions asked returns, instant replacement options, and automated instant refunds.',
+    title: '7-Day Replacement Example',
+    description: 'The sample policy covers damaged, defective or wrong items within 7 days. No real orders or returns occur.',
   },
   {
     icon: CreditCard,
     badge: 'Encrypted Checkout',
-    title: 'Flexible Payment Modes',
-    description: 'Pay via instant UPI QR code scanning, credit/debit cards, netbanking, or Cash on Delivery.',
+    title: 'Simulated Checkout',
+    description: 'Try UPI, card or cash on delivery as demo choices. No QR, card data or money transfer is involved.',
   },
   {
     icon: ScanSearch,
@@ -42,8 +42,8 @@ const FEATURES = [
   {
     icon: Headphones,
     badge: 'Always Here',
-    title: '24/7 Priority Support',
-    description: 'Get round-the-clock live chat, email, and phone assistance for order tracking and product support.',
+    title: 'Help Centre',
+    description: 'Read the sample FAQs and order guidance in the help centre.',
   },
 ];
 
@@ -125,7 +125,7 @@ export default function FeatureSpotlight() {
         <span className="eyebrow mb-2 inline-block">The ElectroHub Difference</span>
         <h2 className="section-title">Built for tech lovers who demand excellence</h2>
         <p className="mt-3 text-base text-muted">
-          From verified original products to lightning-fast delivery, every purchase is backed by our customer-first commitment.
+          Explore a sample electronics catalog and shopping journey. This demonstration does not accept real payments or ship products.
         </p>
       </div>
 

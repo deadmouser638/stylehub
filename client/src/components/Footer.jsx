@@ -7,8 +7,8 @@ import { CatalogContext, categoryPath } from '../context/CatalogContext';
 const PERKS = [
   { icon: Truck, title: 'Free delivery', text: 'On all orders above ₹999' },
   { icon: RotateCcw, title: '7-day replacement', text: 'For damaged or defective items' },
-  { icon: ShieldCheck, title: 'Brand warranty', text: 'Genuine products, GST invoice' },
-  { icon: Headset, title: '24x7 support', text: 'We are here to help' },
+  { icon: ShieldCheck, title: 'Demo catalog', text: 'Sample product details' },
+  { icon: Headset, title: 'Help centre', text: 'Read sample FAQs' },
 ];
 
 const HELP_LINKS = [
@@ -28,7 +28,7 @@ const Footer = () => {
   const subscribe = (e) => {
     e.preventDefault();
     if (!/^\S+@\S+\.\S+$/.test(email)) return toast.error('Please enter a valid email address');
-    toast.success("You're subscribed! Watch your inbox for exclusive drops.");
+    toast.success('Demo form submitted. No email will be sent.');
     setEmail('');
   };
 
@@ -72,7 +72,7 @@ const Footer = () => {
 
         <div>
           <h3 className="label mb-4">Get exclusive drops</h3>
-          <p className="mb-4 text-sm text-muted">Early access to sales and new arrivals. No spam, unsubscribe anytime.</p>
+          <p className="mb-4 text-sm text-muted">Try the demo subscription form. No email is stored or sent.</p>
           <form onSubmit={subscribe} className="flex gap-2">
             <label htmlFor="newsletter-email" className="sr-only">Email address</label>
             <div className="relative flex-1">
@@ -87,7 +87,7 @@ const Footer = () => {
       <div className="border-t border-line">
         <div className="container-x flex flex-col items-center justify-between gap-2 py-6 text-xs text-muted sm:flex-row">
           <p>© {new Date().getFullYear()} ElectroHub. All rights reserved.</p>
-          <p>Product photos from Unsplash. Payments are simulated in this demo store.</p>
+          <p>Demo only · No payments or shipments · Product photos from Unsplash</p>
         </div>
       </div>
     </footer>

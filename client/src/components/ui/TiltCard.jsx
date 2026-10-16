@@ -36,6 +36,9 @@ export function TiltCard({
   // Glare position percentage
   const glareX = useTransform(xSpring, [-0.5, 0.5], ['0%', '100%']);
   const glareY = useTransform(ySpring, [-0.5, 0.5], ['0%', '100%']);
+  const glareBackground = useTransform([glareX, glareY], ([gx, gy]) =>
+    `radial-gradient(circle at ${gx} ${gy}, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 65%)`
+  );
 
   const handleMouseMove = (e) => {
     if (!ref.current) return;
@@ -85,11 +88,7 @@ export function TiltCard({
         <motion.div
           className="pointer-events-none absolute inset-0 rounded-inherit opacity-0 transition-opacity duration-300 group-hover:opacity-100 z-30"
           style={{
-            background: useTransform(
-              [glareX, glareY],
-              ([gx, gy]) =>
-                `radial-gradient(circle at ${gx} ${gy}, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 65%)`
-            ),
+            background: glareBackground,
             borderRadius: 'inherit',
           }}
         />

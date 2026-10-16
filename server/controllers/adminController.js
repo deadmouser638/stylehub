@@ -107,6 +107,7 @@ const productFields = (body) => {
   if (data.discount_percent < 0 || data.discount_percent > 95) errors.push('discount (0-95%)');
   if (data.stock < 0) errors.push('stock (cannot be negative)');
   if (!list(body.images).length) errors.push('at least one image URL');
+  if (list(body.images).some(url => !/^https:\/\/images\.unsplash\.com\/[\w/?=&%.-]+$/.test(url))) errors.push('images (use the approved image host)');
   return { data, errors };
 };
 
@@ -245,7 +246,8 @@ const offerFields = (body) => {
   const errors = [];
   if (!data.title) errors.push('title');
   if (data.placement === 'hero' && !data.image) errors.push('image URL (required for home page banners)');
-  if (data.link && !data.link.startsWith('/') && !/^https?:\/\//.test(data.link)) errors.push('link (must start with / or http)');
+  if (data.link && !/^\/(?!\/)[\w/?=&%.-]*$/.test(data.link)) errors.push('link (must be an internal store path)');
+  if (data.image && !/^https:\/\/images\.unsplash\.com\/[\w/?=&%.-]+$/.test(data.image)) errors.push('image (must use the approved image host)');
   return { data, errors };
 };
 

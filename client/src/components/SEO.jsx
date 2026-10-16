@@ -42,7 +42,7 @@ export default function SEO({
     // Standard Meta Tags
     setMeta('name', 'description', description);
     setMeta('name', 'keywords', keywords);
-    setMeta('name', 'robots', 'index, follow');
+    setMeta('name', 'robots', 'noindex, nofollow');
 
     // Open Graph Tags
     setMeta('property', 'og:title', fullTitle);
@@ -61,19 +61,7 @@ export default function SEO({
     // Canonical Tag
     setLink('canonical', url);
 
-    // JSON-LD Structured Data Injection
-    let scriptTag = document.getElementById('json-ld-schema');
-    if (schemaJson) {
-      if (!scriptTag) {
-        scriptTag = document.createElement('script');
-        scriptTag.id = 'json-ld-schema';
-        scriptTag.type = 'application/ld+json';
-        document.head.appendChild(scriptTag);
-      }
-      scriptTag.textContent = JSON.stringify(schemaJson);
-    } else if (scriptTag) {
-      scriptTag.remove();
-    }
+    // No inline JSON-LD in the demo: the enforced CSP disallows inline scripts.
   }, [title, description, keywords, image, url, type, schemaJson]);
 
   return null;

@@ -30,6 +30,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminCoupons from './pages/admin/AdminCoupons';
 import AdminOffers from './pages/admin/AdminOffers';
 import ScrollProgress from './components/ui/ScrollProgress';
+import DemoUtilities from './components/DemoUtilities';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -93,6 +94,7 @@ function App() {
                   <SearchOverlay />
                   <VisualSearchModal />
                   <QuickViewModal />
+                  <DemoUtilities />
                 </UIProvider>
               </Router>
             </CatalogProvider>

@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, PackageCheck, Truck, CircleCheck, CircleX, ArrowRight, MapPin, QrCode } from 'lucide-react';
+import { Package, PackageCheck, Truck, CircleCheck, CircleX, ArrowRight, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { Spinner } from '../components/ui/Skeletons';
-import Modal from '../components/ui/Modal';
-import UpiPayment from '../components/UpiPayment';
 import { addDays, formatDate, formatPrice, parseDbDate } from '../utils/format';
 
 const TIMELINE = [
@@ -44,7 +42,6 @@ const Orders = () => {
   const [orders, setOrders] = useState(getCachedOrders);
   const [loading, setLoading] = useState(() => getCachedOrders().length === 0);
   const [cancellingId, setCancellingId] = useState(null);
-  const [upiPayment, setUpiPayment] = useState(null);
 
   const fetchOrders = async () => {
     try {
@@ -77,15 +74,6 @@ const Orders = () => {
       window.removeEventListener('storage', handleUpdate);
     };
   }, []);
-
-  const openUpi = async (orderId) => {
-    try {
-      const res = await api.get(`/payments/upi/${orderId}`);
-      setUpiPayment(res.data.data);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not load payment details');
-    }
-  };
 
   const handleCancel = async (orderId) => {
     if (!window.confirm(`Cancel order #${orderId}?`)) return;
@@ -149,8 +137,7 @@ const Orders = () => {
                   <div className="mb-6">
                     {order.payment_method === 'UPI' && order.payment_status === 'Pending' && (
                       <div className="mb-5 flex flex-col gap-3 rounded-2xl bg-accent-soft p-4 sm:flex-row sm:items-center">
-                        <p className="flex-1 text-sm font-semibold text-accent-text">Your UPI payment of {formatPrice(order.total_amount)} is pending. Pay now to confirm this order.</p>
-                        <button onClick={() => openUpi(order.id)} className="btn-primary py-2.5"><QrCode size={16} /> Complete payment</button>
+                        <p className="flex-1 text-sm font-semibold text-accent-text">This older demo order shows a pending UPI payment. Payments are disabled; no money should be sent.</p>
                       </div>
                     )}
                     {order.payment_status === 'Verifying' && (
@@ -219,13 +206,6 @@ const Orders = () => {
         })}
       </div>
 
-      <Modal open={!!upiPayment} onClose={() => setUpiPayment(null)} title="Complete your UPI payment" variant="wide" className="max-w-3xl">
-        {upiPayment && (
-          <div className="p-5 sm:p-6">
-            <UpiPayment payment={upiPayment} onSubmitted={() => { setUpiPayment(null); fetchOrders(); }} />
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };

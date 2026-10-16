@@ -160,7 +160,7 @@ const Reviews = ({ productId, reviews, summary, onAdded }) => {
                   <span className="grid h-10 w-10 place-items-center rounded-full bg-surface-2 font-extrabold">{r.user_name[0]}</span>
                   <div>
                     <p className="text-sm font-extrabold">{r.user_name}</p>
-                    <p className="flex items-center gap-1 text-xs text-success"><BadgeCheck size={13} /> Verified buyer</p>
+                    <p className="flex items-center gap-1 text-xs text-success"><BadgeCheck size={13} /> Demo review</p>
                   </div>
                 </div>
                 <span className="text-xs text-muted">{formatDate(r.created_at)}</span>

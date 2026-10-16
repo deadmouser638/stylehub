@@ -28,7 +28,7 @@ if (isVercel) {
 }
 
 // Set DEBUG_SQL=1 to log every query
-const db = new Database(dbPath, process.env.DEBUG_SQL ? { verbose: console.log } : {});
+const db = new Database(dbPath);
 
 // Enable foreign keys and WAL mode for fast concurrency
 db.pragma('foreign_keys = ON');
@@ -68,15 +68,22 @@ for (const [table, column, definition] of MIGRATIONS) {
   } catch {}
 }
 
+// Revoke the old publicly documented admin account on existing demo databases.
+// Fresh admin access is provisioned only with private seed environment values.
+try {
+  db.prepare("UPDATE users SET role = 'customer', password_hash = ? WHERE email = ? AND role = 'admin' AND password_hash = ?")
+    .run('disabled-legacy-demo-admin', 'admin@electrohub.com', '$2b$08$WbY06qofXpBVmZwiiwp0D.6juuRGMDxmehAJnbk3lOrI/ze6UGWai');
+} catch (err) {
+  console.warn('Legacy admin migration could not run:', err.message);
+}
+
 // Precomputed bcrypt hashes for instant initialization (cost 8)
 const DEMO_HASH = '$2b$08$RuS2/hMZPh6Rww0MG0a.yeuDXvQrALjx6ocIwNUBaSR4HYDlteOdK';
-const ADMIN_HASH = '$2b$08$WbY06qofXpBVmZwiiwp0D.6juuRGMDxmehAJnbk3lOrI/ze6UGWai';
 
 try {
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get()?.count || 0;
   if (userCount === 0) {
     db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Demo User', 'demo@electrohub.com', DEMO_HASH, 'customer');
-    db.prepare('INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)').run('Store Admin', 'admin@electrohub.com', ADMIN_HASH, 'admin');
   }
 
   const demoUser = db.prepare("SELECT id FROM users WHERE email = 'demo@electrohub.com'").get();
@@ -90,7 +97,8 @@ try {
     }
 
     const orderCount = db.prepare('SELECT COUNT(*) as count FROM orders').get()?.count || 0;
-    if (orderCount === 0) {
+    const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get()?.count || 0;
+    if (orderCount === 0 && productCount > 0) {
       const insertOrder = db.prepare(`
         INSERT OR IGNORE INTO orders (id, user_id, total_amount, discount_amount, payment_method, status, payment_status, payment_ref, coupon_code, delivery_fee, courier, tracking_number, address_snapshot, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?), datetime('now', ?))

@@ -2,12 +2,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { successResponse, errorResponse } = require('../utils/response');
+const { cleanText } = require('../utils/validate');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'stylehub_super_secret_jwt_key_2026';
+const { JWT_SECRET } = require('../config/auth');
 
 const signToken = (id) => {
   return jwt.sign({ id }, JWT_SECRET, {
-    expiresIn: '30d',
+    expiresIn: '12h',
   });
 };
 
@@ -15,14 +16,14 @@ exports.register = async (req, res) => {
   const { name, password, phone, gender } = req.body;
   const email = String(req.body.email || '').trim().toLowerCase();
 
-  if (!name || !name.trim() || !email || !password) {
+  if (!name || !email || !password) {
     return errorResponse(res, 400, 'Name, email and password are required');
   }
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return errorResponse(res, 400, 'Please enter a valid email address');
   }
-  if (password.length < 6) {
-    return errorResponse(res, 400, 'Password must be at least 6 characters');
+  if (!cleanText(name, 80) || typeof password !== 'string' || password.length < 12 || password.length > 128 || email.length > 254) {
+    return errorResponse(res, 400, 'Use a name under 80 characters and a password of 12–128 characters');
   }
 
   try {
@@ -74,7 +75,7 @@ exports.login = async (req, res) => {
     return successResponse(res, 200, { user: userWithoutPassword, token }, 'Logged in successfully');
   } catch (error) {
     console.error('Login error:', error);
-    return errorResponse(res, 500, error.message || 'Server error during login');
+    return errorResponse(res, 500, 'Server error during login');
   }
 };
 
@@ -84,6 +85,9 @@ exports.getMe = (req, res) => {
 
 exports.updateProfile = (req, res) => {
   const { name, phone, gender } = req.body;
+  if (name !== undefined && !cleanText(name, 80)) return errorResponse(res, 400, 'Enter a valid name under 80 characters');
+  if (phone !== undefined && phone !== null && phone !== '' && (typeof phone !== 'string' || !/^\d{10}$/.test(phone))) return errorResponse(res, 400, 'Enter a valid phone number');
+  if (gender !== undefined && gender !== null && gender !== '' && !['Male', 'Female', 'Other'].includes(gender)) return errorResponse(res, 400, 'Invalid profile option');
   try {
     const update = db.prepare('UPDATE users SET name = COALESCE(?, name), phone = COALESCE(?, phone), gender = COALESCE(?, gender) WHERE id = ?');
     update.run(name, phone, gender, req.user.id);
@@ -100,8 +104,8 @@ exports.changePassword = async (req, res) => {
   if (!currentPassword || !newPassword) {
     return errorResponse(res, 400, 'Current and new password are required');
   }
-  if (newPassword.length < 6) {
-    return errorResponse(res, 400, 'New password must be at least 6 characters');
+  if (typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128) {
+    return errorResponse(res, 400, 'New password must be 12–128 characters');
   }
 
   try {

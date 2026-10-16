@@ -6,9 +6,9 @@ const PAGES = {
   contact: {
     title: 'Contact us',
     body: [
-      ['Customer care', 'Email support@stylehub.example or call 1800-000-0000 (toll free), 24x7.'],
+      ['Demo support', 'This is a demonstration store. The contact details and order records are examples; please contact the project owner through the repository for project questions.'],
       ['Order questions', 'For anything about an existing order, open My Orders and use the order number when you get in touch. It helps us find your order quickly.'],
-      ['Corporate office', 'ElectroHub Retail Pvt. Ltd., 12 MG Road, Bengaluru 560001.'],
+      ['About this project', 'ElectroHub is a demo project, not a registered retailer. No product is shipped and no payment is collected.'],
     ],
   },
   faq: {
@@ -26,18 +26,18 @@ const PAGES = {
   shipping: {
     title: 'Shipping',
     body: [
-      ['Delivery times', 'Most orders arrive within 3-5 business days. Remote areas can take up to 7 days.'],
-      ['Delivery charges', 'Delivery is free on orders above ₹999. A ₹99 convenience fee applies to smaller orders.'],
+      ['Delivery preview', 'The sample estimate shows 3–5 business days (up to 7 for remote areas). Demo orders are not shipped.'],
+      ['Sample delivery charges', 'The demo calculation is free above ₹999 and ₹99 for smaller orders. No delivery charge is collected.'],
       ['Check your pincode', 'Enter your pincode on any product page to see the expected delivery date.'],
     ],
   },
   returns: {
     title: 'Returns & exchanges',
     body: [
-      ['7-day replacement', 'Damaged, defective or wrong items can be replaced within 7 days of delivery. Keep the original box and accessories.'],
-      ['Brand warranty', 'Every product carries the manufacturer warranty shown on its page. Keep your invoice for warranty claims.'],
-      ['Installation', 'ACs, washing machines and large TVs include free installation by the brand within 48 hours of delivery.'],
-      ['Refunds', 'Refunds go back to your original payment method within 5-7 business days after pickup.'],
+      ['7-day replacement example', 'The sample policy covers damaged, defective or wrong items within 7 days. No real returns are processed.'],
+      ['Warranty examples', 'Warranty details are sample catalog data, not an offer of manufacturer warranty.'],
+      ['Installation', 'Installation is not provided for demo orders.'],
+      ['Refunds', 'No money is collected, so there are no refunds in this demo.'],
     ],
   },
   terms: {
@@ -51,7 +51,7 @@ const PAGES = {
   privacy: {
     title: 'Privacy policy',
     body: [
-      ['What we store', 'Your name, email, phone, addresses and orders, so that we can deliver your purchases.'],
+      ['What we store', 'Demo accounts, addresses and orders are saved to the demo database and some browser storage. Do not enter real personal information.'],
       ['Photos for visual search', 'Photos you use to search are processed in your browser and are never uploaded to our servers.'],
       ['On your device', 'Your theme choice, recent searches and recently viewed products are stored only in your browser.'],
     ],
@@ -78,13 +78,19 @@ const HelpPage = () => {
       <article className="min-w-0 max-w-2xl">
         <h1 className="section-title">{page.title}</h1>
         <div className="mt-8 space-y-4">
-          {page.body.map(([heading, text]) => (
+          {page.body.map(([heading, text]) => slug === 'faq' ? (
+            <details key={heading} className="card group p-5">
+              <summary className="cursor-pointer font-extrabold">{heading}</summary>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{text}</p>
+            </details>
+          ) : (
             <section key={heading} className="card p-5">
               <h2 className="font-extrabold">{heading}</h2>
               <p className="mt-1.5 text-sm leading-relaxed text-muted">{text}</p>
             </section>
           ))}
         </div>
+        <p className="mt-6 text-xs text-muted">Last updated: 16 October 2026</p>
         <p className="mt-8 text-sm text-muted">Still need help? <Link to="/help/contact" className="link">Contact us</Link>.</p>
       </article>
     </div>

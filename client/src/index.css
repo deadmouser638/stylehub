@@ -254,3 +254,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  header, footer, nav, button, [role="dialog"], .fixed { display: none !important; }
+  body { color: #000 !important; background: #fff !important; }
+  main { padding: 0 !important; }
+  a { color: #000 !important; text-decoration: underline; }
+}

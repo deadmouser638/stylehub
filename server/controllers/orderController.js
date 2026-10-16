@@ -1,8 +1,6 @@
 const db = require('../db');
 const { successResponse, errorResponse } = require('../utils/response');
 const { evaluateCoupon, getDeliveryFee } = require('../utils/pricing');
-const { buildUpiPayment } = require('../utils/upi');
-const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } = require('../config/payment');
 const { adjustStock, addHistory, getHistory } = require('../utils/inventory');
 
 const PAYMENT_METHODS = ['UPI', 'Card', 'COD'];
@@ -23,9 +21,6 @@ exports.createOrder = async (req, res) => {
   if (!PAYMENT_METHODS.includes(payment_method)) {
     return errorResponse(res, 400, 'Invalid payment method');
   }
-  if (payment_method === 'Card' && !(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET)) {
-    return errorResponse(res, 400, 'Card payments are not available right now. Please choose UPI or Cash on Delivery.');
-  }
 
   try {
     let address = null;
@@ -34,18 +29,6 @@ exports.createOrder = async (req, res) => {
     }
     if (!address) {
       address = db.prepare('SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC LIMIT 1').get(user_id);
-    }
-    if (!address && req.body.address) {
-      const a = req.body.address;
-      try {
-        const info = db.prepare(`
-          INSERT INTO addresses (user_id, name, phone, pincode, address_line, city, state, type, is_default)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-        `).run(user_id, a.name || 'Demo Customer', a.phone || '9876543210', a.pincode || '400001', a.address_line || 'Flat 402, Sunshine Towers', a.city || 'Mumbai', a.state || 'Maharashtra', a.type || 'Home');
-        address = db.prepare('SELECT * FROM addresses WHERE id = ?').get(info.lastInsertRowid);
-      } catch (err) {
-        console.error('Error inserting fallback address:', err);
-      }
     }
     if (!address) return errorResponse(res, 400, 'Please add a delivery address before checkout');
 
@@ -56,21 +39,8 @@ exports.createOrder = async (req, res) => {
       WHERE c.user_id = ?
     `).all(user_id);
 
-    // If server cart was empty (e.g. guest cart or different serverless instance), restore from client items
-    if (cartItems.length === 0 && Array.isArray(req.body.items) && req.body.items.length > 0) {
-      for (const item of req.body.items) {
-        const pid = item.product_id || item.id;
-        try {
-          db.prepare('INSERT INTO cart_items (user_id, product_id, size, quantity) VALUES (?, ?, ?, ?)').run(user_id, pid, item.size || null, item.quantity || 1);
-        } catch {}
-      }
-      cartItems = db.prepare(`
-        SELECT c.*, p.name, p.price, p.discount_percent, p.stock, p.images, p.is_active
-        FROM cart_items c
-        JOIN products p ON c.product_id = p.id
-        WHERE c.user_id = ?
-      `).all(user_id);
-    }
+    // The authenticated server cart is authoritative; client-supplied items
+    // must never silently create an order.
 
     if (cartItems.length === 0) return errorResponse(res, 400, 'Your bag is empty');
 
@@ -95,9 +65,9 @@ exports.createOrder = async (req, res) => {
     const deliveryFee = getDeliveryFee(afterDiscount);
     const finalAmount = Math.round(afterDiscount + deliveryFee);
     const addressSnapshot = JSON.stringify(address);
-    // COD is collected on delivery; UPI and card start as pending until the payment is confirmed
-    const paymentStatus = payment_method === 'COD' ? 'Pay on Delivery' : 'Pending';
-    const orderStatus = payment_method === 'COD' ? 'Confirmed' : 'Pending';
+    // Demo only: no money is collected for any payment selection.
+    const paymentStatus = payment_method === 'COD' ? 'Pay on Delivery' : 'Paid';
+    const orderStatus = 'Confirmed';
 
     const orderId = db.transaction(() => {
       const orderInfo = db.prepare(`
@@ -117,14 +87,12 @@ exports.createOrder = async (req, res) => {
         adjustStock(item.product_id, -item.quantity, 'Sold', `Order #${id}`);
       }
 
-      addHistory(id, 'Placed', payment_method === 'COD' ? 'Order placed (cash on delivery)' : 'Order placed, waiting for payment');
+      addHistory(id, 'Placed', `Demo order placed (${payment_method}; no payment collected)`);
       db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(user_id);
       return id;
     })();
 
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
     const response = { orderId, amount: finalAmount, paymentMethod: payment_method, paymentStatus };
-    if (payment_method === 'UPI') response.upi = await buildUpiPayment(order);
 
     return successResponse(res, 201, response, 'Order created successfully');
   } catch (error) {

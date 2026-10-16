@@ -1,5 +1,6 @@
 const db = require('../db');
 const { successResponse, errorResponse } = require('../utils/response');
+const { cleanText } = require('../utils/validate');
 
 exports.addReview = (req, res) => {
   const { productId } = req.params;
@@ -10,6 +11,7 @@ exports.addReview = (req, res) => {
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     return errorResponse(res, 400, 'Rating must be a whole number from 1 to 5');
   }
+  if (comment != null && comment !== '' && !cleanText(comment, 500)) return errorResponse(res, 400, 'Review must be plain text under 500 characters');
 
   try {
     const product = db.prepare('SELECT id, rating, rating_count FROM products WHERE id = ?').get(productId);

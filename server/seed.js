@@ -355,7 +355,7 @@ const generateProducts = () => {
         name: p.name, brand: p.brand, category, subcategory: p.subcategory || sub, gender: 'Unisex',
         description: `${p.name}. ${p.about}`,
         price: price99(p.price * (100 / (100 - discount))), discount_percent: discount,
-        rating: Math.round(between(3.6, 4.8) * 10) / 10, rating_count: Math.round(Math.exp(between(Math.log(20), Math.log(12000)))),
+        rating: Math.round(between(3.6, 4.8) * 10) / 10, rating_count: 0,
         stock: stockRoll < 0.05 ? 0 : stockRoll < 0.15 ? Math.round(between(1, 5)) : Math.round(between(10, 120)),
         colors: JSON.stringify([photo.color]), sizes: '[]',
         images: JSON.stringify([imageUrl(photo.id), closeUp(photo.id, 1.6, 0.5), closeUp(photo.id, 2.2, 0.45)]),
@@ -379,7 +379,10 @@ const seedDatabase = async () => {
 
     const insertUser = db.prepare('INSERT INTO users (name, email, password_hash, phone, gender, role) VALUES (?, ?, ?, ?, ?, ?)');
     const demoUserId = insertUser.run('Demo User', 'demo@electrohub.com', await bcrypt.hash('Demo@123', 10), '9876543210', null, 'customer').lastInsertRowid;
-    insertUser.run('Store Admin', 'admin@electrohub.com', await bcrypt.hash('Admin@123', 10), null, null, 'admin');
+    if (process.env.DEMO_ADMIN_EMAIL && process.env.DEMO_ADMIN_PASSWORD) {
+      if (process.env.DEMO_ADMIN_PASSWORD.length < 16) throw new Error('DEMO_ADMIN_PASSWORD must be at least 16 characters');
+      insertUser.run('Store Admin', process.env.DEMO_ADMIN_EMAIL.toLowerCase(), await bcrypt.hash(process.env.DEMO_ADMIN_PASSWORD, 12), null, null, 'admin');
+    }
     
     db.prepare(`
       INSERT INTO addresses (user_id, name, phone, pincode, address_line, city, state, type, is_default)
@@ -401,7 +404,7 @@ const seedDatabase = async () => {
     insertOffer.run('4K Smart TVs', 'Big screens, bigger savings', 'Explore', '/products/TVs', u('1593359677879-a4bb92f829d1', 700), 'hero', 3);
     insertOffer.run('Cameras for creators', 'DSLR, mirrorless & action', 'Explore', '/products/Cameras', u('1502982720700-bfff97f2ecac', 700), 'hero', 4);
     ['Free delivery on orders above ₹999', 'Use code WELCOME10 for 10% off your first order', 'Flat ₹1,000 off above ₹15,000 with FLAT1000',
-      'Pay instantly with any UPI app: scan the QR at checkout', 'Brand warranty on every product · 7-day replacement',
+      'Demo checkout: no real payments or shipments', 'Sample catalog · Explore safely',
     ].forEach((text, i) => insertOffer.run(text, null, null, null, null, 'ticker', i + 1));
 
     const products = generateProducts();
@@ -425,6 +428,11 @@ const seedDatabase = async () => {
         }
       }
     })();
+
+    // Display counts and averages from the actual sample review rows only.
+    db.exec(`UPDATE products SET
+      rating_count = (SELECT COUNT(*) FROM reviews WHERE product_id = products.id),
+      rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM reviews WHERE product_id = products.id), 0)`);
 
     const perCat = db.prepare('SELECT category, COUNT(*) AS n FROM products GROUP BY category').all().map(r => `${r.category}: ${r.n}`).join(', ');
     console.log(`Seeded ${products.length} products (${perCat}) and ${reviewCount} reviews.`);

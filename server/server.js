@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+require('./config/auth');
 const db = require('./db');
 
 const authRoutes = require('./routes/auth');
@@ -18,10 +20,22 @@ const app = express();
 const path = require('path');
 
 // Middleware
-app.use(helmet({ contentSecurityPolicy: false })); // Security headers
-app.use(cors());
-app.use(express.json());
-app.use(morgan('dev')); // Request logging
+app.disable('x-powered-by');
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      imgSrc: ["'self'", 'data:', 'https://images.unsplash.com'],
+      connectSrc: ["'self'"], fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'], objectSrc: ["'none'"],
+      frameAncestors: ["'none'"], upgradeInsecureRequests: null,
+    },
+  },
+}));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({ origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)) }));
+app.use(express.json({ limit: '64kb', strict: true }));
+if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
 
 // Cache-Control headers ensuring real-time fresh data
 app.use((req, res, next) => {
@@ -72,8 +86,8 @@ app.get('/{*path}', (req, res, next) => {
 
 // Basic Centralized Error Handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
+  if (process.env.NODE_ENV !== 'production') console.error(err);
+  res.status(err.status || 500).json({ success: false, message: err.status === 400 ? 'Invalid request body' : 'Internal Server Error' });
 });
 
 if (require.main === module) {

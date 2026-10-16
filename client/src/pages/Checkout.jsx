@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import { CartContext } from '../context/CartContext';
 import AddressForm from '../components/AddressForm';
 import PriceSummary from '../components/PriceSummary';
-import UpiPayment from '../components/UpiPayment';
 import { Spinner } from '../components/ui/Skeletons';
 import { getCartSummary } from '../utils/pricing';
 import { addDays, formatPrice } from '../utils/format';
@@ -13,18 +12,10 @@ import api from '../utils/api';
 
 const STEPS = ['Bag', 'Address', 'Payment'];
 
-const loadRazorpay = () => new Promise((resolve, reject) => {
-  if (window.Razorpay) return resolve();
-  const script = document.createElement('script');
-  script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-  script.onload = resolve;
-  script.onerror = () => reject(new Error('Could not load the card payment window'));
-  document.body.appendChild(script);
-});
 const PAYMENT_METHODS = [
-  { value: 'UPI', label: 'UPI', hint: 'Google Pay, PhonePe, Paytm & more', icon: Smartphone },
-  { value: 'Card', label: 'Credit / Debit card', hint: 'Visa, Mastercard, RuPay', icon: CreditCard },
-  { value: 'COD', label: 'Cash on delivery', hint: 'Pay when your order arrives', icon: Banknote },
+  { value: 'UPI', label: 'Demo UPI', hint: 'Simulated payment · no QR or money transfer', icon: Smartphone },
+  { value: 'Card', label: 'Demo card', hint: 'Simulated payment · no card details required', icon: CreditCard },
+  { value: 'COD', label: 'Demo cash on delivery', hint: 'Simulated delivery · no cash collected', icon: Banknote },
 ];
 
 const Checkout = () => {
@@ -113,38 +104,6 @@ const Checkout = () => {
     api.get('/payments/config').then(res => setPayConfig(res.data.data)).catch(() => {});
   }, [loadAddresses]);
 
-  const payByCard = async (order) => {
-    try {
-      await loadRazorpay();
-      const res = await api.post(`/payments/razorpay/${order.orderId}`);
-      const rz = res.data.data;
-      const checkout = new window.Razorpay({
-        key: rz.keyId,
-        amount: rz.amount,
-        currency: rz.currency,
-        name: rz.name,
-        description: `Order #${order.orderId}`,
-        order_id: rz.razorpayOrderId,
-        prefill: rz.prefill,
-        theme: { color: '#e11d48' },
-        handler: async (response) => {
-          try {
-            await api.post(`/payments/razorpay/${order.orderId}/verify`, response);
-            setPaymentState('paid');
-          } catch (err) {
-            toast.error(err.response?.data?.message || 'Payment verification failed');
-            setPaymentState('failed');
-          }
-        },
-        modal: { ondismiss: () => setPaymentState(s => (s === 'paid' ? s : 'failed')) },
-      });
-      checkout.open();
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message);
-      setPaymentState('failed');
-    }
-  };
-
   useEffect(() => {
     if (!cartLoading && cart.length === 0 && !placed && step !== 3) {
       navigate('/cart', { replace: true });
@@ -172,7 +131,7 @@ const Checkout = () => {
         coupon_code: appliedCoupon?.code,
       });
       const order = res.data.data;
-      const initialPState = order.paymentMethod === 'COD' ? 'cod' : 'awaiting';
+      const initialPState = order.paymentMethod === 'COD' ? 'cod' : 'paid';
       setPlaced(order);
       setPaymentState(initialPState);
       setStep(3);
@@ -198,7 +157,6 @@ const Checkout = () => {
         localStorage.setItem('electrohub_admin_orders', JSON.stringify([newOrderRecord, ...existingAdminOrders.filter(o => o.id !== order.orderId)]));
         window.dispatchEvent(new CustomEvent('electrohub_order_updated', { detail: { orderId: order.orderId } }));
       } catch {}
-      if (order.paymentMethod === 'Card') payByCard(order);
       setAppliedCoupon(null);
       fetchCart();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -209,24 +167,6 @@ const Checkout = () => {
     }
   };
 
-  const handleUpiSubmitted = () => {
-    setPaymentState('verifying');
-    try {
-      sessionStorage.setItem('last_payment_state', 'verifying');
-    } catch {}
-  };
-
-  const handleCancelUpiAndGoBack = () => {
-    try {
-      sessionStorage.removeItem('last_placed_order');
-      sessionStorage.removeItem('last_payment_state');
-    } catch {}
-    setPlaced(null);
-    setPaymentState(null);
-    setStep(2);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const summary = getCartSummary(cart, appliedCoupon);
 
   if (cartLoading || addressesLoading) return <Spinner />;
@@ -234,45 +174,16 @@ const Checkout = () => {
   if ((step === 3 || placed) && placed) {
     const eta = addDays(new Date(), 5).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
-    if (placed.paymentMethod === 'UPI' && paymentState === 'awaiting') {
-      return (
-        <div className="container-x py-8 md:py-12">
-          <div className="card mx-auto max-w-3xl p-5 animate-slide-up sm:p-8">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="eyebrow">Order #{placed.orderId} reserved</p>
-              <button
-                onClick={handleCancelUpiAndGoBack}
-                className="btn-ghost flex items-center gap-1.5 text-xs font-bold text-muted hover:text-fg"
-              >
-                ← Choose another payment method
-              </button>
-            </div>
-            <h1 className="mt-1 font-display text-3xl font-semibold">Complete your UPI payment</h1>
-            <p className="mb-6 mt-1 text-sm text-muted">Pay {formatPrice(placed.amount)} to confirm your order, or switch to Cash on Delivery / Card.</p>
-            <UpiPayment payment={placed.upi} onSubmitted={handleUpiSubmitted} />
-            <div className="mt-6 border-t border-line pt-4 text-center">
-              <button
-                onClick={handleCancelUpiAndGoBack}
-                className="btn-outline text-xs font-extrabold"
-              >
-                Change Payment Method (Pay via Cash on Delivery or Card)
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     const views = {
-      cod: { icon: CircleCheck, tone: 'bg-success-soft text-success', title: 'Order confirmed!', text: `Pay ${formatPrice(placed.amount)} in cash or UPI when your order arrives.` },
-      paid: { icon: CircleCheck, tone: 'bg-success-soft text-success', title: 'Payment successful!', text: 'Your payment was received and your order is confirmed.' },
+      cod: { icon: CircleCheck, tone: 'bg-success-soft text-success', title: 'Demo order confirmed!', text: 'No product will ship and no cash will be collected.' },
+      paid: { icon: CircleCheck, tone: 'bg-success-soft text-success', title: 'Demo order confirmed!', text: 'Payment was simulated. No money was collected.' },
       verifying: { icon: Clock, tone: 'bg-accent-soft text-accent-text', title: 'Payment submitted', text: "Thanks! We're verifying your UPI payment and will confirm your order shortly." },
       awaiting: { icon: Clock, tone: 'bg-accent-soft text-accent-text', title: 'Complete your payment', text: 'The card payment window is open. Finish paying there to confirm your order.' },
       failed: { icon: Clock, tone: 'bg-accent-soft text-accent-text', title: 'Payment not completed', text: 'Your order is saved. You can complete the payment from My Orders, or cancel it there.' },
     };
     const view = views[paymentState] || views.cod;
     const Icon = view.icon;
-    const retryCard = placed.paymentMethod === 'Card' && paymentState === 'failed' && payConfig.card.enabled;
+    const retryCard = false;
     return (
       <div className="container-x py-12">
         <div className="card mx-auto max-w-xl px-6 py-12 text-center animate-slide-up">
@@ -289,7 +200,6 @@ const Checkout = () => {
             </div>
           )}
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {retryCard && <button onClick={() => { setPaymentState('awaiting'); payByCard(placed); }} className="btn-primary">Try paying again</button>}
             <button onClick={() => navigate('/orders')} className={retryCard ? 'btn-outline' : 'btn-primary'}>View my orders</button>
             <Link to="/products" className="btn-outline">Continue shopping</Link>
           </div>
@@ -382,9 +292,9 @@ const Checkout = () => {
                   );
                 })}
               </div>
-              <p className="mt-4 flex items-start gap-2 text-xs text-muted"><ShieldCheck size={15} className="shrink-0 text-success" /> {paymentMethod === 'UPI' ? "After placing the order you'll get a UPI QR code for the exact amount." : paymentMethod === 'Card' ? 'Card payments are processed securely by Razorpay. We never see your card details.' : 'Pay in cash or by UPI to the delivery partner.'}</p>
+              <p className="mt-4 flex items-start gap-2 text-xs text-muted"><ShieldCheck size={15} className="shrink-0 text-success" /> Demo checkout only. No money is charged, no payment details are requested, and no products are shipped.</p>
               <button type="button" onClick={handlePlaceOrder} disabled={placing} className="btn-primary mt-8 w-full py-4 text-base sm:w-auto sm:px-12">
-                {placing ? 'Placing order…' : paymentMethod === 'COD' ? `Confirm Cash on Delivery Order` : `Pay ₹${summary.total.toLocaleString('en-IN')}`}
+                {placing ? 'Placing order…' : 'Place demo order'}
               </button>
             </section>
           )}
