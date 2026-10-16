@@ -110,3 +110,66 @@ exports.changePassword = (req, res) => {
   }
   return successResponse(res, 200, null, 'Demo password updated for current session');
 };
+
+exports.forgotPassword = async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!email) {
+    return errorResponse(res, 400, 'Email address is required');
+  }
+
+  // Generate a signed, time-limited reset token valid for 30 minutes
+  const resetToken = jwt.sign(
+    { email, purpose: 'password_reset' },
+    JWT_SECRET,
+    { algorithm: 'HS256', expiresIn: '30m' }
+  );
+
+  // Return reset instructions and token for demo flow
+  return successResponse(res, 200, {
+    email,
+    resetToken,
+    expiresIn: '30 minutes',
+    demoNotice: 'In this demo environment, the reset token is returned directly and a simulation link is generated.'
+  }, 'Password reset link generated successfully.');
+};
+
+exports.resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return errorResponse(res, 400, 'Reset token and new password are required');
+  }
+
+  if (typeof newPassword !== 'string' || newPassword.length < 12) {
+    return errorResponse(res, 400, 'New password must be at least 12 characters');
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    if (decoded.purpose !== 'password_reset' || !decoded.email) {
+      return errorResponse(res, 400, 'Invalid or expired password reset token');
+    }
+
+    // In this stateless demo, we create a fresh active user session for the reset email
+    const isDemo = decoded.email === DEMO_USER.email;
+    const user = {
+      id: isDemo ? DEMO_USER.id : Math.floor(1000 + Math.random() * 9000),
+      name: isDemo ? DEMO_USER.name : (decoded.email.split('@')[0] || 'User'),
+      email: decoded.email,
+      phone: isDemo ? DEMO_USER.phone : null,
+      gender: isDemo ? DEMO_USER.gender : 'Other',
+      role: 'customer'
+    };
+
+    const sessionToken = signToken({ id: user.id, email: user.email, name: user.name, role: user.role });
+
+    return successResponse(res, 200, {
+      user,
+      token: sessionToken,
+      message: 'Password reset successful. You are now logged in.'
+    }, 'Password has been reset successfully.');
+  } catch (err) {
+    return errorResponse(res, 400, 'Password reset link is invalid or has expired. Please request a new one.');
+  }
+};
+

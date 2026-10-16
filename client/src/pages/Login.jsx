@@ -43,7 +43,12 @@ const Login = () => {
           <input id="login-email" type="email" required autoComplete="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div>
-          <label htmlFor="login-password" className="label">Password</label>
+          <div className="flex items-center justify-between">
+            <label htmlFor="login-password" className="label">Password</label>
+            <Link to="/forgot-password" className="text-xs font-semibold text-accent hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <div className="relative">
             <input id="login-password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" className="input pr-12" value={password} onChange={(e) => setPassword(e.target.value)} />
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 grid w-12 place-items-center text-muted hover:text-fg" aria-label={showPassword ? 'Hide password' : 'Show password'}>
