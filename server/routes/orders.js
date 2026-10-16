@@ -1,12 +1,12 @@
 const express = require('express');
 const { createOrder, getMyOrders, getOrderById, cancelOrder, trackOrder } = require('../controllers/orderController');
-const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Public track route
 router.get('/track', trackOrder);
-router.use(protect);
 
+// Guest-friendly stateless orders
 router.post('/', createOrder);
 router.get('/', getMyOrders);
 router.get('/:id', getOrderById);

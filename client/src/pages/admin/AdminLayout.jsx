@@ -38,6 +38,10 @@ const AdminLayout = () => {
         </div>
         <Link to="/" className="btn-outline py-2.5"><ArrowLeft size={16} /> <span className="hidden sm:inline">Back to shop</span></Link>
       </div>
+
+      <div className="mb-6 rounded-2xl border border-line bg-surface-2 p-4 text-xs text-muted leading-relaxed">
+        <strong className="text-fg">Stateless Demo Notice:</strong> ElectroHub operates on a database-free serverless architecture. Changes made in this control panel (stock updates, catalog edits, offers, coupons) apply to current in-memory instance state and will not persist across deployments or serverless cold starts.
+      </div>
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
         <nav className="hide-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-1 lg:px-0" aria-label="Admin sections">
           {LINKS.map(({ to, label, icon: Icon, end }) => (

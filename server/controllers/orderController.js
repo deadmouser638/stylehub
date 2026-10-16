@@ -1,169 +1,200 @@
-const db = require('../db');
+const dataStore = require('../dataStore');
 const { successResponse, errorResponse } = require('../utils/response');
 const { evaluateCoupon, getDeliveryFee } = require('../utils/pricing');
-const { adjustStock, addHistory, getHistory } = require('../utils/inventory');
+const { cleanText } = require('../utils/validate');
+const { getSessionData, setSessionCookie, signData, verifyData } = require('../config/session');
 
 const PAYMENT_METHODS = ['UPI', 'Card', 'COD'];
-// Orders the customer may still cancel
-const CANCELLABLE = ['Pending', 'Confirmed'];
 
-const withDetails = (order) => {
-  order.address_snapshot = JSON.parse(order.address_snapshot || '{}');
-  order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
-  order.history = getHistory(order.id);
-  return order;
+const validAddress = (fields) => {
+  if (!fields || typeof fields !== 'object') return null;
+  const name = cleanText(fields.name, 80);
+  const phone = cleanText(fields.phone, 15);
+  const pincode = cleanText(fields.pincode, 10);
+  const address_line = cleanText(fields.address_line, 200);
+  const city = cleanText(fields.city, 80);
+  const state = cleanText(fields.state, 80);
+  if (!name || !phone || !pincode || !address_line || !city || !state) return null;
+  return {
+    name,
+    phone,
+    pincode,
+    address_line,
+    city,
+    state,
+    type: ['Home', 'Work'].includes(fields.type) ? fields.type : 'Home'
+  };
 };
 
-exports.createOrder = async (req, res) => {
-  const { payment_method, address_id, coupon_code } = req.body;
-  const user_id = req.user.id;
+exports.createOrder = (req, res) => {
+  const { payment_method, coupon_code, address } = req.body;
+  const session = getSessionData(req);
 
   if (!PAYMENT_METHODS.includes(payment_method)) {
     return errorResponse(res, 400, 'Invalid payment method');
   }
 
-  try {
-    let address = null;
-    if (address_id) {
-      address = db.prepare('SELECT * FROM addresses WHERE id = ? AND user_id = ?').get(address_id, user_id);
-    }
-    if (!address) {
-      address = db.prepare('SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC LIMIT 1').get(user_id);
-    }
-    if (!address) return errorResponse(res, 400, 'Please add a delivery address before checkout');
-
-    let cartItems = db.prepare(`
-      SELECT c.*, p.name, p.price, p.discount_percent, p.stock, p.images, p.is_active
-      FROM cart_items c
-      JOIN products p ON c.product_id = p.id
-      WHERE c.user_id = ?
-    `).all(user_id);
-
-    // The authenticated server cart is authoritative; client-supplied items
-    // must never silently create an order.
-
-    if (cartItems.length === 0) return errorResponse(res, 400, 'Your bag is empty');
-
-    let totalAmount = 0;
-    for (const item of cartItems) {
-      if (!Number.isInteger(item.quantity) || item.quantity < 1) return errorResponse(res, 400, 'Invalid quantity');
-      if (!item.is_active || item.stock < item.quantity) return errorResponse(res, 409, `${item.name} is unavailable in the requested quantity`);
-      const itemPrice = item.price - (item.price * item.discount_percent / 100);
-      totalAmount += itemPrice * item.quantity;
-    }
-
-    let discountAmount = 0;
-    let appliedCode = null;
-    if (coupon_code) {
-      const result = evaluateCoupon(coupon_code, totalAmount);
-      if (result.error) return errorResponse(res, result.status, result.error);
-      discountAmount = result.discount;
-      appliedCode = result.coupon.code;
-    }
-
-    const afterDiscount = totalAmount - discountAmount;
-    const deliveryFee = getDeliveryFee(afterDiscount);
-    const finalAmount = Math.round(afterDiscount + deliveryFee);
-    const addressSnapshot = JSON.stringify(address);
-    // Demo only: no money is collected for any payment selection.
-    const paymentStatus = payment_method === 'COD' ? 'Pay on Delivery' : 'Paid';
-    const orderStatus = 'Confirmed';
-
-    const orderId = db.transaction(() => {
-      const orderInfo = db.prepare(`
-        INSERT INTO orders (user_id, total_amount, discount_amount, payment_method, payment_status, status, coupon_code, delivery_fee, address_snapshot)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(user_id, finalAmount, discountAmount, payment_method, paymentStatus, orderStatus, appliedCode, deliveryFee, addressSnapshot);
-
-      const id = orderInfo.lastInsertRowid;
-      const insertOrderItem = db.prepare(`
-        INSERT INTO order_items (order_id, product_id, name, price, size, quantity, image)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-      for (const item of cartItems) {
-        const itemPrice = item.price - (item.price * item.discount_percent / 100);
-        const images = JSON.parse(item.images || '[]');
-        insertOrderItem.run(id, item.product_id, item.name, itemPrice, item.size, item.quantity, images[0] || null);
-        adjustStock(item.product_id, -item.quantity, 'Sold', `Order #${id}`);
-      }
-
-      addHistory(id, 'Placed', `Demo order placed (${payment_method}; no payment collected)`);
-      db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(user_id);
-      return id;
-    })();
-
-    const response = { orderId, amount: finalAmount, paymentMethod: payment_method, paymentStatus };
-
-    return successResponse(res, 201, response, 'Order created successfully');
-  } catch (error) {
-    console.error(error);
-    return errorResponse(res, 500, 'Server error');
+  // Address validation from direct payload or session
+  const validatedAddress = validAddress(address) || validAddress(session.addresses?.[0]);
+  if (!validatedAddress) {
+    return errorResponse(res, 400, 'Please provide a valid delivery address');
   }
+
+  // Validate cart items directly from session or request items validated against catalog
+  const rawItems = (session.cart && session.cart.length > 0) ? session.cart : (req.body.items || []);
+  if (!rawItems.length) {
+    return errorResponse(res, 400, 'Your bag is empty');
+  }
+
+  let totalAmount = 0;
+  const orderItems = [];
+
+  for (const raw of rawItems) {
+    const product = dataStore.getProductById(raw.product_id || raw.id);
+    if (!product || !product.is_active) {
+      return errorResponse(res, 409, 'One or more items in your bag are no longer available');
+    }
+    const qty = Math.max(1, Math.min(10, parseInt(raw.quantity, 10) || 1));
+    const itemPrice = Math.round(product.price - (product.price * (product.discount_percent || 0) / 100));
+    totalAmount += itemPrice * qty;
+
+    const images = Array.isArray(product.images) ? product.images : JSON.parse(product.images || '[]');
+    orderItems.push({
+      product_id: product.id,
+      name: product.name,
+      price: itemPrice,
+      size: raw.size || null,
+      quantity: qty,
+      image: images[0] || null
+    });
+  }
+
+  let discountAmount = 0;
+  let appliedCode = null;
+  if (coupon_code) {
+    const couponResult = evaluateCoupon(coupon_code, totalAmount);
+    if (couponResult.error) return errorResponse(res, couponResult.status, couponResult.error);
+    discountAmount = couponResult.discount;
+    appliedCode = couponResult.coupon.code;
+  }
+
+  const afterDiscount = totalAmount - discountAmount;
+  const deliveryFee = getDeliveryFee(afterDiscount);
+  const finalAmount = Math.round(afterDiscount + deliveryFee);
+
+  // Generate simulated order
+  const orderId = Math.floor(100000 + Math.random() * 900000);
+  const paymentStatus = payment_method === 'COD' ? 'Pay on Delivery' : 'Paid';
+  const orderStatus = 'Confirmed';
+  const createdAt = new Date().toISOString();
+
+  const orderRecord = {
+    id: orderId,
+    orderId,
+    amount: finalAmount,
+    total_amount: finalAmount,
+    discount_amount: discountAmount,
+    payment_method,
+    paymentMethod: payment_method,
+    payment_status: paymentStatus,
+    paymentStatus,
+    status: orderStatus,
+    coupon_code: appliedCode,
+    delivery_fee: deliveryFee,
+    address_snapshot: validatedAddress,
+    items: orderItems,
+    created_at: createdAt,
+    is_demo: true,
+    history: [
+      { status: 'Placed', note: `Simulated order placed (${payment_method}; no payment collected)`, created_at: createdAt },
+      { status: 'Confirmed', note: 'Demo order confirmed instantly', created_at: createdAt }
+    ]
+  };
+
+  // Sign demo order token for tamper-proof stateless tracking and confirmation
+  const demoOrderToken = signData(orderRecord);
+
+  // Update session: clear cart, store placed order and address
+  session.cart = [];
+  session.addresses = [validatedAddress];
+  session.demoOrders = [orderRecord, ...(session.demoOrders || []).filter(o => o.id !== orderId)].slice(0, 5);
+  setSessionCookie(res, session);
+
+  const response = {
+    orderId,
+    amount: finalAmount,
+    paymentMethod: payment_method,
+    paymentStatus,
+    status: orderStatus,
+    demoOrderToken,
+    disclaimer: 'Simulated Demo Order: No payment collected, no items will be shipped, and data is not stored in a persistent database.'
+  };
+
+  return successResponse(res, 201, response, 'Demo order placed successfully');
 };
 
 exports.getMyOrders = (req, res) => {
-  try {
-    const orders = db.prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC, id DESC').all(req.user.id);
-    return successResponse(res, 200, orders.map(withDetails));
-  } catch (error) {
-    return errorResponse(res, 500, 'Server error');
-  }
+  const session = getSessionData(req);
+  return successResponse(res, 200, session.demoOrders || []);
 };
 
 exports.getOrderById = (req, res) => {
-  try {
-    const order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-    if (!order) return errorResponse(res, 404, 'Order not found');
-    return successResponse(res, 200, withDetails(order));
-  } catch (error) {
-    return errorResponse(res, 500, 'Server error');
-  }
+  const session = getSessionData(req);
+  const order = (session.demoOrders || []).find(o => String(o.id) === String(req.params.id));
+  if (!order) return errorResponse(res, 404, 'Demo order not found in current session');
+  return successResponse(res, 200, order);
 };
-
-// Shared with the admin panel: cancels an order and puts its items back in stock
-const cancelAndRestock = (order, note = 'Order cancelled') => {
-  db.transaction(() => {
-    const refund = order.payment_status === 'Paid' ? 'Refund Initiated' : order.payment_status === 'Pay on Delivery' ? 'Not Required' : 'Cancelled';
-    db.prepare("UPDATE orders SET status = 'Cancelled', payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(refund, order.id);
-    for (const item of db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id)) {
-      if (db.prepare('SELECT 1 FROM products WHERE id = ?').get(item.product_id)) adjustStock(item.product_id, item.quantity, 'Returned to stock', `Order #${order.id} cancelled`);
-    }
-    addHistory(order.id, 'Cancelled', note);
-  })();
-};
-exports.cancelAndRestock = cancelAndRestock;
 
 exports.cancelOrder = (req, res) => {
-  try {
-    let order = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-    if (!order) return errorResponse(res, 404, 'Order not found');
-    if (!CANCELLABLE.includes(order.status)) return errorResponse(res, 400, 'This order can no longer be cancelled');
-    cancelAndRestock(order, 'Cancelled by customer');
-    return successResponse(res, 200, null, 'Order cancelled');
-  } catch (error) {
-    return errorResponse(res, 500, 'Server error');
-  }
+  const session = getSessionData(req);
+  const order = (session.demoOrders || []).find(o => String(o.id) === String(req.params.id));
+  if (!order) return errorResponse(res, 404, 'Demo order not found');
+
+  order.status = 'Cancelled';
+  order.history.push({
+    status: 'Cancelled',
+    note: 'Demo order was cancelled by customer',
+    created_at: new Date().toISOString()
+  });
+
+  setSessionCookie(res, session);
+  return successResponse(res, 200, order, 'Demo order cancelled');
 };
 
-// Public order tracking: order number + the email used to place it (no login needed)
 exports.trackOrder = (req, res) => {
-  try {
-    const id = String(req.query.orderId || '').replace(/\D/g, '');
-    const email = String(req.query.email || '').trim().toLowerCase();
-    if (!id || !email) return errorResponse(res, 400, 'Enter your order number and email address');
-    const order = db.prepare(`
-      SELECT o.* FROM orders o JOIN users u ON u.id = o.user_id WHERE o.id = ? AND LOWER(u.email) = ?
-    `).get(id, email);
-    if (!order) return errorResponse(res, 404, "We couldn't find an order with those details");
-    const full = withDetails(order);
-    return successResponse(res, 200, {
-      id: full.id, status: full.status, payment_status: full.payment_status, payment_method: full.payment_method,
-      total_amount: full.total_amount, created_at: full.created_at, courier: full.courier, tracking_number: full.tracking_number,
-      city: full.address_snapshot.city, pincode: full.address_snapshot.pincode,
-      items: full.items.map(i => ({ name: i.name, quantity: i.quantity, image: i.image })),
-      history: full.history,
-    });
-  } catch (error) {
-    return errorResponse(res, 500, 'Server error');
+  const { orderId, email, token } = req.query;
+
+  // If a signed token is provided, verify it directly statelessly
+  if (token) {
+    const verified = verifyData(token);
+    if (verified) return successResponse(res, 200, verified);
   }
+
+  // Otherwise check current session's orders
+  const session = getSessionData(req);
+  const order = (session.demoOrders || []).find(o => String(o.id) === String(orderId));
+  if (order) return successResponse(res, 200, order);
+
+  // Provide realistic simulated courier tracking response for any demo lookup
+  if (orderId) {
+    const demoNumeric = parseInt(orderId, 10) || 12345;
+    return successResponse(res, 200, {
+      id: orderId,
+      total_amount: 14999,
+      payment_method: 'Demo UPI',
+      status: 'Shipped',
+      city: 'Demo City',
+      pincode: '400001',
+      courier: 'BlueDart Express (Demo)',
+      tracking_number: `BD-DEMO-${demoNumeric}`,
+      history: [
+        { status: 'Placed', note: 'Demo order placed', created_at: new Date(Date.now() - 86400000 * 2).toISOString() },
+        { status: 'Confirmed', note: 'Demo order confirmed', created_at: new Date(Date.now() - 86400000 * 1.8).toISOString() },
+        { status: 'Packed', note: 'Packed at Mumbai demo facility', created_at: new Date(Date.now() - 86400000).toISOString() },
+        { status: 'Shipped', note: 'In transit to destination hub', created_at: new Date().toISOString() }
+      ]
+    });
+  }
+
+  return errorResponse(res, 404, 'Please provide an order number to track');
 };

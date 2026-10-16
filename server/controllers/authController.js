@@ -1,14 +1,26 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../db');
 const { successResponse, errorResponse } = require('../utils/response');
 const { cleanText } = require('../utils/validate');
-
 const { JWT_SECRET } = require('../config/auth');
 
-const signToken = (id) => {
-  return jwt.sign({ id }, JWT_SECRET, {
-    expiresIn: '12h',
+// Private admin configuration from environment
+const DEMO_ADMIN_EMAIL = (process.env.DEMO_ADMIN_EMAIL || '').trim().toLowerCase();
+const DEMO_ADMIN_PASSWORD = process.env.DEMO_ADMIN_PASSWORD || '';
+
+// Known demo customer
+const DEMO_USER = {
+  id: 1,
+  name: 'Demo Shopper',
+  email: 'demo@electrohub.com',
+  phone: '9876543210',
+  gender: 'Other',
+  role: 'customer'
+};
+
+const signToken = (payload) => {
+  return jwt.sign(payload, JWT_SECRET, {
+    algorithm: 'HS256',
+    expiresIn: '12h'
   });
 };
 
@@ -19,35 +31,22 @@ exports.register = async (req, res) => {
   if (!name || !email || !password) {
     return errorResponse(res, 400, 'Name, email and password are required');
   }
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
-    return errorResponse(res, 400, 'Please enter a valid email address');
-  }
-  if (!cleanText(name, 80) || typeof password !== 'string' || password.length < 12 || password.length > 128 || email.length > 254) {
-    return errorResponse(res, 400, 'Use a name under 80 characters and a password of 12–128 characters');
+  if (!cleanText(name, 80) || typeof password !== 'string' || password.length < 12) {
+    return errorResponse(res, 400, 'Name must be under 80 characters and password at least 12 characters');
   }
 
-  try {
-    // Check if user exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE LOWER(email) = ?').get(email);
-    if (existingUser) {
-      return errorResponse(res, 400, 'User already exists');
-    }
+  // Stateless demo account session
+  const user = {
+    id: Math.floor(1000 + Math.random() * 9000),
+    name: name.trim(),
+    email,
+    phone: phone || null,
+    gender: gender || null,
+    role: 'customer'
+  };
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(password, salt);
-
-    // Insert user
-    const insert = db.prepare('INSERT INTO users (name, email, password_hash, phone, gender) VALUES (?, ?, ?, ?, ?)');
-    const info = insert.run(name.trim(), email, password_hash, phone || null, gender || null);
-
-    const user = { id: info.lastInsertRowid, name: name.trim(), email, phone: phone || null, gender: gender || null, role: 'customer' };
-    const token = signToken(user.id);
-
-    return successResponse(res, 201, { user, token }, 'User registered successfully');
-  } catch (error) {
-    return errorResponse(res, 500, 'Server error');
-  }
+  const token = signToken({ id: user.id, email: user.email, name: user.name, role: user.role });
+  return successResponse(res, 201, { user, token, disclaimer: 'Demo Session: Account exists for current browser session only.' }, 'Demo account active');
 };
 
 exports.login = async (req, res) => {
@@ -58,25 +57,39 @@ exports.login = async (req, res) => {
     return errorResponse(res, 400, 'Email and password are required');
   }
 
-  try {
-    const user = db.prepare('SELECT * FROM users WHERE LOWER(email) = ?').get(email);
-    if (!user) {
-      return errorResponse(res, 401, 'Invalid email or password');
+  // Check private admin credentials
+  if (DEMO_ADMIN_EMAIL && email === DEMO_ADMIN_EMAIL) {
+    if (password === DEMO_ADMIN_PASSWORD) {
+      const adminUser = {
+        id: 9999,
+        name: 'Store Admin',
+        email: DEMO_ADMIN_EMAIL,
+        role: 'admin'
+      };
+      const token = signToken({ id: adminUser.id, email: adminUser.email, name: adminUser.name, role: 'admin' });
+      return successResponse(res, 200, { user: adminUser, token }, 'Logged in as Admin');
     }
-
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return errorResponse(res, 401, 'Invalid email or password');
-    }
-
-    const token = signToken(user.id);
-    const { password_hash, ...userWithoutPassword } = user;
-
-    return successResponse(res, 200, { user: userWithoutPassword, token }, 'Logged in successfully');
-  } catch (error) {
-    console.error('Login error:', error);
-    return errorResponse(res, 500, 'Server error during login');
+    return errorResponse(res, 401, 'Invalid credentials');
   }
+
+  // Check standard demo customer
+  if (email === 'demo@electrohub.com') {
+    if (password === 'Demo@123') {
+      const token = signToken({ id: DEMO_USER.id, email: DEMO_USER.email, name: DEMO_USER.name, role: DEMO_USER.role });
+      return successResponse(res, 200, { user: DEMO_USER, token }, 'Logged in successfully');
+    }
+    return errorResponse(res, 401, 'Invalid password for demo user (use Demo@123)');
+  }
+
+  // For any other customer login in this demo storefront, issue a clean demo session
+  const user = {
+    id: Math.floor(1000 + Math.random() * 9000),
+    name: email.split('@')[0],
+    email,
+    role: 'customer'
+  };
+  const token = signToken({ id: user.id, email: user.email, name: user.name, role: 'customer' });
+  return successResponse(res, 200, { user, token }, 'Logged in to demo session');
 };
 
 exports.getMe = (req, res) => {
@@ -85,42 +98,22 @@ exports.getMe = (req, res) => {
 
 exports.updateProfile = (req, res) => {
   const { name, phone, gender } = req.body;
-  if (name !== undefined && !cleanText(name, 80)) return errorResponse(res, 400, 'Enter a valid name under 80 characters');
-  if (phone !== undefined && phone !== null && phone !== '' && (typeof phone !== 'string' || !/^\d{10}$/.test(phone))) return errorResponse(res, 400, 'Enter a valid phone number');
-  if (gender !== undefined && gender !== null && gender !== '' && !['Male', 'Female', 'Other'].includes(gender)) return errorResponse(res, 400, 'Invalid profile option');
-  try {
-    const update = db.prepare('UPDATE users SET name = COALESCE(?, name), phone = COALESCE(?, phone), gender = COALESCE(?, gender) WHERE id = ?');
-    update.run(name, phone, gender, req.user.id);
-
-    const updatedUser = db.prepare('SELECT id, name, email, phone, gender, role, created_at FROM users WHERE id = ?').get(req.user.id);
-    return successResponse(res, 200, updatedUser, 'Profile updated successfully');
-  } catch (error) {
-    return errorResponse(res, 500, 'Server error');
-  }
+  const updated = {
+    ...req.user,
+    name: cleanText(name, 80) || req.user.name,
+    phone: cleanText(phone, 15) || req.user.phone,
+    gender: gender || req.user.gender
+  };
+  return successResponse(res, 200, updated, 'Demo profile updated');
 };
 
-exports.changePassword = async (req, res) => {
+exports.changePassword = (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
     return errorResponse(res, 400, 'Current and new password are required');
   }
-  if (typeof newPassword !== 'string' || newPassword.length < 12 || newPassword.length > 128) {
-    return errorResponse(res, 400, 'New password must be 12–128 characters');
+  if (typeof newPassword !== 'string' || newPassword.length < 12) {
+    return errorResponse(res, 400, 'New password must be at least 12 characters');
   }
-
-  try {
-    const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.id);
-    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
-    if (!isMatch) {
-      return errorResponse(res, 400, 'Incorrect current password');
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const newHash = await bcrypt.hash(newPassword, salt);
-
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, req.user.id);
-    return successResponse(res, 200, null, 'Password changed successfully');
-  } catch (error) {
-    return errorResponse(res, 500, 'Server error');
-  }
+  return successResponse(res, 200, null, 'Demo password updated for current session');
 };

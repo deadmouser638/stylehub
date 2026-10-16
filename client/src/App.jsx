@@ -73,9 +73,9 @@ function App() {
                         <Route path="/help/:slug" element={<HelpPage />} />
                         <Route path="/track" element={<TrackOrder />} />
                         <Route path="/cart" element={<Cart />} />
-                        <Route path="/wishlist" element={protect(<Wishlist />)} />
-                        <Route path="/checkout" element={protect(<Checkout />)} />
-                        <Route path="/orders" element={protect(<Orders />)} />
+                        <Route path="/wishlist" element={<Wishlist />} />
+                        <Route path="/checkout" element={<Checkout />} />
+                        <Route path="/orders" element={<Orders />} />
                         <Route path="/profile" element={protect(<Profile />)} />
                         <Route path="/admin" element={<AdminLayout />}>
                           <Route index element={<AdminDashboard />} />

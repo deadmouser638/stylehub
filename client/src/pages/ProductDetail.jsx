@@ -137,18 +137,12 @@ const Reviews = ({ productId, reviews, summary, onAdded }) => {
 
           <div className="card mt-6 p-6">
             <h3 className="font-extrabold">Write a review</h3>
-            {!user ? (
-              <p className="mt-2 text-sm text-muted"><Link to="/login" state={{ from: location.pathname }} className="link">Log in</Link> to review this product.</p>
-            ) : alreadyReviewed ? (
-              <p className="mt-2 text-sm text-muted">You've already reviewed this product. Thank you!</p>
-            ) : (
-              <form onSubmit={submit} className="mt-3 space-y-3">
-                <StarRow value={rating} size={26} onChange={setRating} />
-                <label htmlFor="review-comment" className="sr-only">Your review</label>
-                <textarea id="review-comment" rows={3} value={comment} onChange={e => setComment(e.target.value)} placeholder="What did you like or dislike?" className="input resize-none" maxLength={500} />
-                <button type="submit" disabled={submitting} className="btn-primary w-full">{submitting ? 'Posting…' : 'Post review'}</button>
-              </form>
-            )}
+            <form onSubmit={submit} className="mt-3 space-y-3">
+              <StarRow value={rating} size={26} onChange={setRating} />
+              <label htmlFor="review-comment" className="sr-only">Your review</label>
+              <textarea id="review-comment" rows={3} value={comment} onChange={e => setComment(e.target.value)} placeholder="What did you like or dislike? (Demo review)" className="input resize-none" maxLength={500} />
+              <button type="submit" disabled={submitting} className="btn-primary w-full">{submitting ? 'Posting…' : 'Post demo review'}</button>
+            </form>
           </div>
         </div>
 

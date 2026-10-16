@@ -1,12 +1,5 @@
-const db = require('../db');
+const dataStore = require('../dataStore');
 const { successResponse, errorResponse } = require('../utils/response');
-
-// Price the customer actually pays, after the product discount
-const SELLING_PRICE = '(price * (100 - discount_percent) / 100)';
-
-// Fields a search term is matched against. Hyphens are stripped so "tshirt" finds "T-Shirt".
-const SEARCH_FIELDS = ['name', 'brand', 'category', 'subcategory', 'colors', 'specs', 'description']
-  .map(f => `REPLACE(LOWER(${f}), '-', '')`);
 
 const SYNONYMS = {
   mobile: 'phone', mobiles: 'phone', smartphone: 'phone', television: 'tv', tvs: 'tv', fridge: 'refrigerator',
@@ -16,83 +9,96 @@ const SYNONYMS = {
 };
 
 const normalizeTerm = (raw) => {
-  let term = raw.toLowerCase().replace(/-/g, '');
+  let term = String(raw || '').toLowerCase().replace(/-/g, '');
   if (SYNONYMS[term]) return SYNONYMS[term];
-  // Crude singularisation so "watches", "shoes" and "jeans" still match their singular forms
   if (term.length > 3 && term.endsWith('s')) term = term.slice(0, -1);
   return term;
 };
 
-const parseProduct = (p) => {
-  p.colors = JSON.parse(p.colors || '[]');
-  p.sizes = JSON.parse(p.sizes || '[]');
-  p.images = JSON.parse(p.images || '[]');
-  p.specs = JSON.parse(p.specs || '{}');
-  return p;
-};
-
-// Specification filters arrive as spec_<Key>=value1,value2 (e.g. spec_RAM=8 GB,16 GB)
-const SPEC_KEY = /^[\w .&()/-]{1,40}$/;
-const specFilters = (q) => Object.entries(q)
-  .filter(([k, v]) => k.startsWith('spec_') && v && SPEC_KEY.test(k.slice(5)))
-  .map(([k, v]) => [k.slice(5), csv(v)]);
-
 const csv = (value) => String(value || '').split(',').map(v => v.trim()).filter(Boolean);
 
-// Builds the WHERE clause for the listing filters. `skip` leaves one filter out so a facet
-// can show the counts the user would get by changing that filter.
-const buildFilters = (q, skip = null) => {
-  // Archived products are hidden from the shop (admins can still see them)
-  const where = [q.includeArchived ? '1=1' : 'is_active = 1'];
-  const params = [];
+const specFilters = (q) => Object.entries(q)
+  .filter(([k, v]) => k.startsWith('spec_') && v)
+  .map(([k, v]) => [k.slice(5), csv(v)]);
 
-  if (q.search) {
-    const terms = q.search.split(/\s+/).filter(Boolean).slice(0, 8).map(normalizeTerm);
-    for (const term of terms) {
-      where.push(`(${SEARCH_FIELDS.map(f => `${f} LIKE ?`).join(' OR ')})`);
-      params.push(...SEARCH_FIELDS.map(() => `%${term}%`));
+const getSellingPrice = (p) => p.price * (100 - (p.discount_percent || 0)) / 100;
+
+const cloneProduct = (p) => ({
+  ...p,
+  colors: Array.isArray(p.colors) ? p.colors : JSON.parse(p.colors || '[]'),
+  sizes: Array.isArray(p.sizes) ? p.sizes : JSON.parse(p.sizes || '[]'),
+  images: Array.isArray(p.images) ? p.images : JSON.parse(p.images || '[]'),
+  specs: typeof p.specs === 'object' && p.specs !== null ? p.specs : JSON.parse(p.specs || '{}'),
+});
+
+const filterProducts = (allProducts, q, skip = null) => {
+  return allProducts.filter(p => {
+    if (!q.includeArchived && !p.is_active) return false;
+
+    if (q.search) {
+      const terms = q.search.split(/\s+/).filter(Boolean).slice(0, 8).map(normalizeTerm);
+      const searchTarget = [
+        p.name, p.brand, p.category, p.subcategory,
+        (p.colors || []).join(' '),
+        Object.entries(p.specs || {}).map(([k, v]) => `${k} ${v}`).join(' '),
+        p.description || ''
+      ].join(' ').toLowerCase().replace(/-/g, '');
+
+      const matchesAll = terms.every(term => searchTarget.includes(term));
+      if (!matchesAll) return false;
     }
-  }
-  if (q.category) { where.push('category = ?'); params.push(q.category); }
-  if (q.gender) { where.push('gender = ?'); params.push(q.gender); }
 
-  const multi = (key, column, jsonArray) => {
-    if (skip === key) return;
-    const values = csv(q[key]);
-    if (!values.length) return;
-    if (jsonArray) {
-      where.push(`(${values.map(() => `${column} LIKE ?`).join(' OR ')})`);
-      params.push(...values.map(v => `%"${v}"%`));
-    } else {
-      where.push(`${column} IN (${values.map(() => '?').join(',')})`);
-      params.push(...values);
+    if (q.category && p.category !== q.category) return false;
+    if (q.gender && p.gender !== q.gender) return false;
+
+    if (skip !== 'subcategory') {
+      const subs = csv(q.subcategory);
+      if (subs.length && !subs.includes(p.subcategory)) return false;
     }
-  };
-  multi('subcategory', 'subcategory');
-  multi('brand', 'brand');
-  multi('color', 'colors', true);
-  multi('size', 'sizes', true);
 
-  if (skip !== 'price') {
-    if (q.minPrice) { where.push(`${SELLING_PRICE} >= ?`); params.push(Number(q.minPrice)); }
-    if (q.maxPrice) { where.push(`${SELLING_PRICE} <= ?`); params.push(Number(q.maxPrice)); }
-  }
-  for (const [key, values] of specFilters(q)) {
-    if (skip === `spec_${key}`) continue;
-    where.push(`json_extract(specs, ?) IN (${values.map(() => '?').join(',')})`);
-    params.push(`$."${key}"`, ...values);
-  }
-  if (q.minRating) { where.push('rating >= ?'); params.push(Number(q.minRating)); }
-  if (q.discount) { where.push('discount_percent >= ?'); params.push(Number(q.discount)); }
+    if (skip !== 'brand') {
+      const brands = csv(q.brand);
+      if (brands.length && !brands.includes(p.brand)) return false;
+    }
 
-  return { where: where.join(' AND '), params };
+    if (skip !== 'color') {
+      const colors = csv(q.color);
+      if (colors.length && !(p.colors || []).some(c => colors.includes(c))) return false;
+    }
+
+    if (skip !== 'size') {
+      const sizes = csv(q.size);
+      if (sizes.length && !(p.sizes || []).some(s => sizes.includes(s))) return false;
+    }
+
+    const sell = getSellingPrice(p);
+    if (skip !== 'price') {
+      if (q.minPrice && sell < Number(q.minPrice)) return false;
+      if (q.maxPrice && sell > Number(q.maxPrice)) return false;
+    }
+
+    if (q.minRating && (p.rating || 0) < Number(q.minRating)) return false;
+    if (q.discount && (p.discount_percent || 0) < Number(q.discount)) return false;
+
+    for (const [key, values] of specFilters(q)) {
+      if (skip === `spec_${key}`) continue;
+      const specVal = p.specs ? p.specs[key] : null;
+      if (!specVal || !values.includes(specVal)) return false;
+    }
+
+    return true;
+  });
 };
 
-const countBy = (rows, column) => {
+const countBy = (items, key) => {
   const counts = {};
-  rows.forEach(r => {
-    const values = column === 'colors' || column === 'sizes' ? JSON.parse(r[column] || '[]') : [r[column]];
-    values.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+  items.forEach(p => {
+    const val = p[key];
+    if (Array.isArray(val)) {
+      val.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+    } else if (val) {
+      counts[val] = (counts[val] || 0) + 1;
+    }
   });
   return Object.entries(counts)
     .map(([value, count]) => ({ value, count }))
@@ -101,70 +107,73 @@ const countBy = (rows, column) => {
 
 exports.getProducts = (req, res) => {
   try {
+    const all = dataStore.getProducts().map(cloneProduct);
     const q = req.query;
     const page = Math.max(1, parseInt(q.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(q.limit, 10) || 24));
 
-    const { where, params } = buildFilters(q);
-    const total = db.prepare(`SELECT COUNT(*) AS count FROM products WHERE ${where}`).get(...params).count;
+    const filtered = filterProducts(all, q);
+    const total = filtered.length;
 
-    const orderParts = [];
-    // Visual search: show products whose colour matches the photo first
-    if (q.boostColor) {
-      orderParts.push('(colors LIKE ?) DESC');
-      params.push(`%"${q.boostColor}"%`);
-    }
-    switch (q.sort) {
-      case 'price_asc': orderParts.push(`${SELLING_PRICE} ASC`); break;
-      case 'price_desc': orderParts.push(`${SELLING_PRICE} DESC`); break;
-      case 'newest': orderParts.push('created_at DESC'); break;
-      case 'rating': orderParts.push('rating DESC'); break;
-      case 'discount': orderParts.push('discount_percent DESC'); break;
-      default: orderParts.push('rating_count DESC');
-    }
-    orderParts.push('id ASC');
+    // Sorting
+    const sort = q.sort || 'popularity';
+    const sorted = [...filtered].sort((a, b) => {
+      if (q.boostColor) {
+        const aHas = (a.colors || []).includes(q.boostColor);
+        const bHas = (b.colors || []).includes(q.boostColor);
+        if (aHas !== bHas) return bHas ? 1 : -1;
+      }
+      if (sort === 'newest') return new Date(b.created_at) - new Date(a.created_at) || b.id - a.id;
+      if (sort === 'rating') return (b.rating - a.rating) || (b.rating_count - a.rating_count);
+      if (sort === 'discount') return (b.discount_percent - a.discount_percent) || (b.rating - a.rating);
+      if (sort === 'price_asc') return getSellingPrice(a) - getSellingPrice(b);
+      if (sort === 'price_desc') return getSellingPrice(b) - getSellingPrice(a);
+      // default: popularity
+      return (b.rating_count - a.rating_count) || (b.rating - a.rating);
+    });
 
-    const products = db.prepare(`
-      SELECT * FROM products WHERE ${where}
-      ORDER BY ${orderParts.join(', ')}
-      LIMIT ? OFFSET ?
-    `).all(...params, limit, (page - 1) * limit).map(parseProduct);
+    const products = sorted.slice((page - 1) * limit, page * limit);
 
-    // Facets: each one ignores its own filter so the user can see alternatives
-    const facetRows = (skip) => {
-      const f = buildFilters(q, skip);
-      return db.prepare(`SELECT subcategory, brand, colors, sizes, ${SELLING_PRICE} AS sell FROM products WHERE ${f.where}`).all(...f.params);
-    };
-    const priceRows = facetRows('price');
+    // Facets computation
+    const facetPool = (skipKey) => filterProducts(all, q, skipKey);
 
-    // Specification facets for the current listing (only keys with a useful number of choices)
+    const priceRows = facetPool('price').map(getSellingPrice);
+    const minPrice = priceRows.length ? Math.floor(Math.min(...priceRows)) : 0;
+    const maxPrice = priceRows.length ? Math.ceil(Math.max(...priceRows)) : 0;
+
+    // Specifications facets
     const specFacets = {};
-    const specRows = db.prepare(`SELECT specs FROM products WHERE ${where}`).all(...params.slice(0, params.length - (q.boostColor ? 1 : 0)));
-    const keys = new Set(specRows.flatMap(r => Object.keys(JSON.parse(r.specs || '{}'))));
-    for (const key of keys) {
-      if (['Warranty', 'Model'].includes(key)) continue;
-      const f = buildFilters(q, `spec_${key}`);
+    const specPool = facetPool(null);
+    const specKeys = new Set();
+    specPool.forEach(p => {
+      if (p.specs) Object.keys(p.specs).forEach(k => specKeys.add(k));
+    });
+
+    for (const key of specKeys) {
       const counts = {};
-      db.prepare(`SELECT json_extract(specs, ?) AS v FROM products WHERE ${f.where}`).all(`$."${key}"`, ...f.params)
-        .forEach(({ v }) => { if (v) counts[v] = (counts[v] || 0) + 1; });
-      const values = Object.entries(counts).map(([value, count]) => ({ value, count }))
+      facetPool(`spec_${key}`).forEach(p => {
+        const val = p.specs ? p.specs[key] : null;
+        if (val) counts[val] = (counts[val] || 0) + 1;
+      });
+      const values = Object.entries(counts)
+        .map(([value, count]) => ({ value, count }))
         .sort((a, b) => (parseFloat(a.value) || 0) - (parseFloat(b.value) || 0) || a.value.localeCompare(b.value));
-      if (values.length >= 2 && values.length <= 14) specFacets[key] = values;
+      if (values.length >= 2 && values.length <= 14) {
+        specFacets[key] = values;
+      }
     }
 
     return successResponse(res, 200, {
       products,
-      pagination: { total, page, limit, pages: Math.ceil(total / limit) },
+      pagination: { total, page, limit, pages: Math.max(1, Math.ceil(total / limit)) },
       facets: {
-        subcategories: countBy(facetRows('subcategory'), 'subcategory'),
-        brands: countBy(facetRows('brand'), 'brand'),
-        colors: countBy(facetRows('color'), 'colors'),
-        sizes: countBy(facetRows('size'), 'sizes'),
+        subcategories: countBy(facetPool('subcategory'), 'subcategory'),
+        brands: countBy(facetPool('brand'), 'brand'),
+        colors: countBy(facetPool('color'), 'colors'),
+        sizes: countBy(facetPool('size'), 'sizes'),
         specs: specFacets,
-        price: priceRows.length
-          ? { min: Math.floor(Math.min(...priceRows.map(r => r.sell))), max: Math.ceil(Math.max(...priceRows.map(r => r.sell))) }
-          : { min: 0, max: 0 },
-      },
+        price: { min: minPrice, max: maxPrice }
+      }
     });
   } catch (error) {
     console.error(error);
@@ -174,27 +183,29 @@ exports.getProducts = (req, res) => {
 
 exports.getCategories = (req, res) => {
   try {
-    const rows = db.prepare(`
-      SELECT category, subcategory, COUNT(*) AS count, MAX(discount_percent) AS max_discount,
-             (SELECT images FROM products p2 WHERE p2.category = p.category AND p2.subcategory = p.subcategory AND p2.is_active = 1
-              ORDER BY rating_count DESC LIMIT 1) AS images
-      FROM products p
-      WHERE is_active = 1
-      GROUP BY category, subcategory
-      ORDER BY category, count DESC
-    `).all();
-
+    const all = dataStore.getProducts().filter(p => p.is_active).map(cloneProduct);
     const tree = {};
-    rows.forEach(r => {
-      tree[r.category] ||= { name: r.category, count: 0, subcategories: [] };
-      tree[r.category].count += r.count;
-      tree[r.category].subcategories.push({
-        name: r.subcategory,
-        count: r.count,
-        maxDiscount: Math.round(r.max_discount),
-        image: JSON.parse(r.images || '[]')[0] || null,
-      });
+
+    all.forEach(p => {
+      if (!tree[p.category]) {
+        tree[p.category] = { name: p.category, count: 0, subcategories: [] };
+      }
+      tree[p.category].count += 1;
+
+      let sub = tree[p.category].subcategories.find(s => s.name === p.subcategory);
+      if (!sub) {
+        sub = {
+          name: p.subcategory,
+          count: 0,
+          maxDiscount: p.discount_percent || 0,
+          image: p.images?.[0] || null
+        };
+        tree[p.category].subcategories.push(sub);
+      }
+      sub.count += 1;
+      if (p.discount_percent > sub.maxDiscount) sub.maxDiscount = p.discount_percent;
     });
+
     return successResponse(res, 200, Object.values(tree));
   } catch (error) {
     return errorResponse(res, 500, 'Server error');
@@ -203,31 +214,29 @@ exports.getCategories = (req, res) => {
 
 exports.getProductById = (req, res) => {
   try {
-    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+    const product = dataStore.getProductById(req.params.id);
     if (!product) return errorResponse(res, 404, 'Product not found');
-    parseProduct(product);
 
-    const reviews = db.prepare(`
-      SELECT r.*, u.name as user_name
-      FROM reviews r
-      JOIN users u ON r.user_id = u.id
-      WHERE r.product_id = ?
-      ORDER BY r.created_at DESC LIMIT 10
-    `).all(req.params.id);
+    const cloned = cloneProduct(product);
+    const reviews = dataStore.getReviewsForProduct(product.id).slice(0, 10);
 
-    const ratingSummary = db.prepare(`
-      SELECT
-        AVG(rating) as avg_rating,
-        COUNT(id) as total_reviews,
-        SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as star_5,
-        SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as star_4,
-        SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as star_3,
-        SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star_2,
-        SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star_1
-      FROM reviews WHERE product_id = ?
-    `).get(req.params.id);
+    const allReviews = dataStore.getReviewsForProduct(product.id);
+    const total_reviews = allReviews.length;
+    const avg_rating = total_reviews > 0
+      ? Number((allReviews.reduce((sum, r) => sum + r.rating, 0) / total_reviews).toFixed(1))
+      : 0;
 
-    return successResponse(res, 200, { product, reviews, ratingSummary });
+    const ratingSummary = {
+      avg_rating,
+      total_reviews,
+      star_5: allReviews.filter(r => r.rating === 5).length,
+      star_4: allReviews.filter(r => r.rating === 4).length,
+      star_3: allReviews.filter(r => r.rating === 3).length,
+      star_2: allReviews.filter(r => r.rating === 2).length,
+      star_1: allReviews.filter(r => r.rating === 1).length,
+    };
+
+    return successResponse(res, 200, { product: cloned, reviews, ratingSummary });
   } catch (error) {
     return errorResponse(res, 500, 'Server error');
   }
@@ -235,14 +244,15 @@ exports.getProductById = (req, res) => {
 
 exports.getRelatedProducts = (req, res) => {
   try {
-    const product = db.prepare('SELECT category, subcategory FROM products WHERE id = ?').get(req.params.id);
+    const product = dataStore.getProductById(req.params.id);
     if (!product) return errorResponse(res, 404, 'Product not found');
 
-    // Same subcategory first, then the rest of the category
-    const related = db.prepare(`
-      SELECT * FROM products WHERE category = ? AND id != ? AND is_active = 1
-      ORDER BY (subcategory = ?) DESC, rating DESC LIMIT 12
-    `).all(product.category, req.params.id, product.subcategory).map(parseProduct);
+    const all = dataStore.getProducts().filter(p => p.is_active && p.id !== product.id && p.category === product.category).map(cloneProduct);
+    const related = all.sort((a, b) => {
+      const aSub = a.subcategory === product.subcategory ? 1 : 0;
+      const bSub = b.subcategory === product.subcategory ? 1 : 0;
+      return (bSub - aSub) || (b.rating - a.rating) || (b.rating_count - a.rating_count);
+    }).slice(0, 12);
 
     return successResponse(res, 200, related);
   } catch (error) {
@@ -254,10 +264,8 @@ exports.getProductsByIds = (req, res) => {
   try {
     const ids = csv(req.query.ids).map(Number).filter(Number.isInteger).slice(0, 30);
     if (!ids.length) return successResponse(res, 200, []);
-    const rows = db.prepare(`SELECT * FROM products WHERE is_active = 1 AND id IN (${ids.map(() => '?').join(',')})`).all(...ids).map(parseProduct);
-    // Keep the order the ids were given in (e.g. most recently viewed first)
-    const byId = new Map(rows.map(r => [r.id, r]));
-    return successResponse(res, 200, ids.map(id => byId.get(id)).filter(Boolean));
+    const items = ids.map(id => dataStore.getProductById(id)).filter(p => p && p.is_active).map(cloneProduct);
+    return successResponse(res, 200, items);
   } catch (error) {
     return errorResponse(res, 500, 'Server error');
   }
@@ -268,45 +276,75 @@ exports.getSuggestions = (req, res) => {
     const q = String(req.query.q || '').trim();
     if (!q) return successResponse(res, 200, { products: [], categories: [], brands: [] });
 
-    const { where, params } = buildFilters({ search: q });
-    const products = db.prepare(`
-      SELECT id, name, brand, category, subcategory, price, discount_percent, images, specs
-      FROM products WHERE ${where} ORDER BY rating_count DESC LIMIT 6
-    `).all(...params).map(p => ({ ...p, image: JSON.parse(p.images || '[]')[0] || null, images: undefined, specs: undefined }));
+    const all = dataStore.getProducts().filter(p => p.is_active).map(cloneProduct);
+    const filtered = filterProducts(all, { search: q });
 
-    const like = `%${normalizeTerm(q)}%`;
-    const categories = db.prepare(`
-      SELECT category, subcategory, COUNT(*) AS count FROM products
-      WHERE is_active = 1 AND (REPLACE(LOWER(subcategory), '-', '') LIKE ? OR LOWER(category) LIKE ?)
-      GROUP BY category, subcategory ORDER BY count DESC LIMIT 5
-    `).all(like, like);
+    const products = filtered
+      .sort((a, b) => b.rating_count - a.rating_count)
+      .slice(0, 6)
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        category: p.category,
+        subcategory: p.subcategory,
+        price: p.price,
+        discount_percent: p.discount_percent,
+        image: p.images?.[0] || null
+      }));
 
-    const brands = db.prepare(`
-      SELECT brand, COUNT(*) AS count FROM products WHERE is_active = 1 AND LOWER(brand) LIKE ?
-      GROUP BY brand ORDER BY count DESC LIMIT 4
-    `).all(`%${q.toLowerCase()}%`);
+    const term = normalizeTerm(q);
+    const catCounts = {};
+    all.forEach(p => {
+      const subNorm = normalizeTerm(p.subcategory);
+      const catNorm = p.category.toLowerCase();
+      if (subNorm.includes(term) || catNorm.includes(term)) {
+        const key = `${p.category}|||${p.subcategory}`;
+        catCounts[key] = (catCounts[key] || 0) + 1;
+      }
+    });
+
+    const categories = Object.entries(catCounts)
+      .map(([k, count]) => {
+        const [category, subcategory] = k.split('|||');
+        return { category, subcategory, count };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const brandCounts = {};
+    all.forEach(p => {
+      if (p.brand.toLowerCase().includes(q.toLowerCase())) {
+        brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1;
+      }
+    });
+
+    const brands = Object.entries(brandCounts)
+      .map(([brand, count]) => ({ brand, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
 
     return successResponse(res, 200, { products, categories, brands });
   } catch (error) {
-    console.error(error);
     return errorResponse(res, 500, 'Server error');
   }
 };
 
-const listQuery = (orderBy) => (req, res) => {
+const curatedList = (sortFn) => (req, res) => {
   try {
     const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 12));
-    const params = [];
-    let where = 'is_active = 1';
-    if (req.query.category) { where += ' AND category = ?'; params.push(req.query.category); }
-    const rows = db.prepare(`SELECT * FROM products WHERE ${where} ORDER BY ${orderBy} LIMIT ?`).all(...params, limit).map(parseProduct);
-    return successResponse(res, 200, rows);
+    let items = dataStore.getProducts().filter(p => p.is_active).map(cloneProduct);
+    if (req.query.category) {
+      items = items.filter(p => p.category === req.query.category);
+    }
+    items.sort(sortFn);
+    return successResponse(res, 200, items.slice(0, limit));
   } catch (error) {
     return errorResponse(res, 500, 'Server error');
   }
 };
 
-exports.getTrending = listQuery('rating_count DESC, rating DESC');
-exports.getNewArrivals = listQuery('created_at DESC, id DESC');
-exports.getDeals = listQuery('discount_percent DESC, rating DESC');
-exports.getTopRated = listQuery('rating DESC, rating_count DESC');
+exports.getTrending = curatedList((a, b) => (b.rating_count - a.rating_count) || (b.rating - a.rating));
+exports.getNewArrivals = curatedList((a, b) => new Date(b.created_at) - new Date(a.created_at) || b.id - a.id);
+exports.getDeals = curatedList((a, b) => (b.discount_percent - a.discount_percent) || (b.rating - a.rating));
+exports.getTopRated = curatedList((a, b) => (b.rating - a.rating) || (b.rating_count - a.rating_count));

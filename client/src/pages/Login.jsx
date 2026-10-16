@@ -60,6 +60,10 @@ const Login = () => {
       <button onClick={() => doLogin(DEMO)} disabled={submitting} className="btn-outline w-full py-3.5">
         <Sparkles size={17} /> Explore with the demo account
       </button>
+
+      <p className="mt-4 text-center text-xs text-muted">
+        Demo sessions are stateless. No permanent passwords or financial records are stored.
+      </p>
     </AuthLayout>
   );
 };

@@ -55,9 +55,12 @@ const Register = () => {
   const strength = passwordStrength(formData.password);
 
   return (
-    <AuthLayout image="https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1000&q=80&auto=format&fit=crop" heading="Join ElectroHub" subheading="Unlock exclusive offers, faster checkout and order tracking.">
-      <h1 className="font-display text-3xl font-semibold">Create account</h1>
+    <AuthLayout image="https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1000&q=80&auto=format&fit=crop" heading="Join ElectroHub" subheading="Unlock exclusive demo offers, faster checkout and order tracking.">
+      <h1 className="font-display text-3xl font-semibold">Create demo account</h1>
       <p className="mt-1 text-sm text-muted">Already have one? <Link to="/login" state={location.state} className="link">Log in</Link></p>
+      <div className="mt-4 rounded-xl bg-surface-2 p-3 text-xs text-muted">
+        This is a stateless demo store. Creating an account initializes a short-lived demo session in your browser. Do not enter real personal details.
+      </div>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         <div>

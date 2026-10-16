@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "code": "WELCOME10",
+    "discount_type": "PERCENTAGE",
+    "discount_value": 10,
+    "min_order": 500,
+    "expires_at": "2027-09-30 18:15:09",
+    "is_active": 1
+  },
+  {
+    "id": 2,
+    "code": "FLAT1000",
+    "discount_type": "FLAT",
+    "discount_value": 1000,
+    "min_order": 15000,
+    "expires_at": "2027-09-30 18:15:09",
+    "is_active": 1
+  },
+  {
+    "id": 3,
+    "code": "BANK7",
+    "discount_type": "PERCENTAGE",
+    "discount_value": 7,
+    "min_order": 30000,
+    "expires_at": "2027-09-30 18:15:09",
+    "is_active": 1
+  },
+  {
+    "id": 4,
+    "code": "MEGA5000",
+    "discount_type": "FLAT",
+    "discount_value": 5000,
+    "min_order": 75000,
+    "expires_at": "2027-09-30 18:15:09",
+    "is_active": 1
+  }
+]
