@@ -5,23 +5,11 @@
 const fs = require('fs');
 const path = require('path');
 
-const loadJson = (filename, fallback = []) => {
-  try {
-    const filePath = path.resolve(__dirname, 'data', filename);
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    }
-  } catch (err) {
-    console.error(`Error loading ${filename}:`, err);
-  }
-  return fallback;
-};
-
-// Authoritative in-memory products dataset
-let products = loadJson('products.json', []);
-let offers = loadJson('offers.json', []);
-let coupons = loadJson('coupons.json', []);
-let reviews = loadJson('reviews.json', []);
+// Authoritative in-memory products dataset bundled directly with require
+let products = require('./data/products.json');
+let offers = require('./data/offers.json');
+let coupons = require('./data/coupons.json');
+let reviews = require('./data/reviews.json');
 
 // Quick lookup maps
 let productsById = new Map();
