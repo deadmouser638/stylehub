@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CircleCheck, CreditCard, Smartphone, Banknote, MapPin, Plus, ShieldCheck, Check, ArrowRight, Truck, Clock } from 'lucide-react';
+import { CircleCheck, CreditCard, Smartphone, Banknote, MapPin, Plus, ShieldCheck, Check, ArrowRight, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CartContext } from '../context/CartContext';
 import AddressForm from '../components/AddressForm';
@@ -177,20 +177,16 @@ const Checkout = () => {
     const views = {
       cod: { icon: CircleCheck, tone: 'bg-success-soft text-success', title: 'Demo order confirmed!', text: 'No product will ship and no cash will be collected.' },
       paid: { icon: CircleCheck, tone: 'bg-success-soft text-success', title: 'Demo order confirmed!', text: 'Payment was simulated. No money was collected.' },
-      verifying: { icon: Clock, tone: 'bg-accent-soft text-accent-text', title: 'Payment submitted', text: "Thanks! We're verifying your UPI payment and will confirm your order shortly." },
-      awaiting: { icon: Clock, tone: 'bg-accent-soft text-accent-text', title: 'Complete your payment', text: 'The card payment window is open. Finish paying there to confirm your order.' },
-      failed: { icon: Clock, tone: 'bg-accent-soft text-accent-text', title: 'Payment not completed', text: 'Your order is saved. You can complete the payment from My Orders, or cancel it there.' },
     };
     const view = views[paymentState] || views.cod;
     const Icon = view.icon;
-    const retryCard = false;
     return (
       <div className="container-x py-12">
         <div className="card mx-auto max-w-xl px-6 py-12 text-center animate-slide-up">
           <span className={`mx-auto grid h-20 w-20 place-items-center rounded-full ${view.tone}`}><Icon size={42} /></span>
           <h1 className="mt-6 font-display text-4xl font-semibold">{view.title}</h1>
           <p className="mt-2 text-muted">Order <strong className="text-fg">#{placed.orderId}</strong> · {view.text}</p>
-          {paymentState !== 'failed' && (
+          {(
             <div className="mx-auto mt-6 flex max-w-sm items-center gap-3 rounded-2xl bg-surface-2 p-4 text-left">
               <Truck size={22} className="shrink-0" />
               <div>

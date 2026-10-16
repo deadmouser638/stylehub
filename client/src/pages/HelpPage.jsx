@@ -7,7 +7,7 @@ const PAGES = {
     title: 'Contact us',
     body: [
       ['Demo support', 'This is a demonstration store. The contact details and order records are examples; please contact the project owner through the repository for project questions.'],
-      ['Order questions', 'For anything about an existing order, open My Orders and use the order number when you get in touch. It helps us find your order quickly.'],
+      ['Demo orders', 'Orders exist only in your browser session and are not handled by a support team. Use the confirmation link within 24 hours to preview tracking.'],
       ['About this project', 'ElectroHub is a demo project, not a registered retailer. No product is shipped and no payment is collected.'],
     ],
   },
@@ -15,7 +15,7 @@ const PAGES = {
     title: 'Frequently asked questions',
     body: [
       ['How do I compare specifications?', 'Open any category and use the Specifications filters (RAM, storage, screen size, capacity, energy rating and more) to narrow down products. Every product page lists its full specifications.'],
-      ['How do I track my order?', 'Use Track order in the footer with your order number and email, or open My Orders to see every status update with dates.'],
+      ['How do I track my order?', 'Use the 24-hour demo tracking link on your confirmation, or enter the order number in Track order while using the same browser session. No real shipment is tracked.'],
       ['How do I search with a photo?', 'Tap the camera icon in the search bar. Take a photo or choose one from your gallery, and ElectroHub recognises the product type and shows similar models. The photo is analysed on your device and never uploaded.'],
       ['How do coupons work?', 'Enter a code such as WELCOME10 in your bag. The discount is checked against your bag total and applied at checkout.'],
       ['Can I cancel an order?', 'Yes. Orders that have not shipped yet can be cancelled from My Orders.'],
