@@ -5,25 +5,8 @@ import { AuthContext } from './AuthContext';
 
 export const CartContext = createContext();
 
-const LOCAL_CART_KEY = 'electrohub_cart_cache';
-
-const getLocalCart = () => {
-  try {
-    const saved = localStorage.getItem(LOCAL_CART_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveLocalCart = (items) => {
-  try {
-    localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(items || []));
-  } catch {}
-};
-
 export const CartProvider = ({ children }) => {
-  const [cart, setCartState] = useState(getLocalCart);
+  const [cart, setCartState] = useState([]);
   const [cartLoading, setCartLoading] = useState(true);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const { user } = useContext(AuthContext);
@@ -31,7 +14,6 @@ export const CartProvider = ({ children }) => {
   const setCart = useCallback((itemsOrFn) => {
     setCartState(prev => {
       const next = typeof itemsOrFn === 'function' ? itemsOrFn(prev) : itemsOrFn;
-      saveLocalCart(next);
       return next;
     });
   }, []);
@@ -40,15 +22,9 @@ export const CartProvider = ({ children }) => {
     try {
       const res = await api.get('/cart');
       const serverItems = res.data.data;
-      if (Array.isArray(serverItems) && serverItems.length > 0) {
-        setCartState(serverItems);
-        saveLocalCart(serverItems);
-      } else {
-        const local = getLocalCart();
-        setCartState(local);
-      }
+      setCartState(Array.isArray(serverItems) ? serverItems : []);
     } catch (err) {
-      setCartState(getLocalCart());
+      setCartState([]);
     } finally {
       setCartLoading(false);
     }

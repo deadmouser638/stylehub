@@ -40,8 +40,8 @@ exports.createOrder = (req, res) => {
     return errorResponse(res, 400, 'Please provide a valid delivery address');
   }
 
-  // Validate cart items directly from session or request items validated against catalog
-  const rawItems = (session.cart && session.cart.length > 0) ? session.cart : (req.body.items || []);
+  // Only the server-validated session cart can be checked out.
+  const rawItems = session.cart || [];
   if (!rawItems.length) {
     return errorResponse(res, 400, 'Your bag is empty');
   }

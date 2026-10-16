@@ -138,6 +138,10 @@ async function runTests() {
   const orderCookie = orderRes.headers['set-cookie'] ? orderRes.headers['set-cookie'][0] : '';
   assert('Cookie size is well within 4KB browser limit (< 1.5KB)', orderCookie.length < 1500);
   assert('Cookie content is encrypted (does not leak plain address or email)', !orderCookie.includes('Demo Street') && !orderCookie.includes('Smoke Test'));
+  const emptyAfterOrder = await request('GET', '/api/cart', null, { Cookie: orderCookie.split(';')[0] });
+  assert('Placed order clears the authoritative server cart', emptyAfterOrder.status === 200 && emptyAfterOrder.data?.data?.length === 0);
+  const noBodyCart = await request('POST', '/api/orders', { payment_method: 'UPI', items: [{ product_id: 1, quantity: 1 }], address: { name: 'Smoke Test', phone: '9876543210', pincode: '400001', address_line: 'Demo Street', city: 'Mumbai', state: 'Maharashtra' } }, { Cookie: orderCookie.split(';')[0] });
+  assert('Client-supplied cart items cannot recreate an order', noBodyCart.status === 400);
 
   // 7. CSRF Defense Checks
   const crossSitePost = await request('POST', '/api/cart', { productId: 1, quantity: 1 }, {
